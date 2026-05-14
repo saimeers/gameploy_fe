@@ -26,14 +26,31 @@ export const authService = {
   },
 
   loginWithGoogle: async () => {
-    const credential = await signInWithPopup(auth, googleProvider)
-    const token = await credential.user.getIdToken()
-    const res = await api.post('/auth/sync', {
-      nombre: credential.user.displayName ?? '',
-      correo: credential.user.email,
-    }, { headers: { Authorization: `Bearer ${token}` } })
-    return { token, user: res.data.data }
-  },
+      const credential = await signInWithPopup(auth, googleProvider)
+      const token = await credential.user.getIdToken()
+      const correo = credential.user.email
+      const nombre = credential.user.displayName ?? ''
+
+      const checkRes = await api.get(`/users/check?email=${correo}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const exists = checkRes.data.data.exists;
+
+      if (!exists) {
+        return { 
+          needsRegistration: true, 
+          googleData: { correo, nombre, token } 
+        };
+      }
+
+      const res = await api.post('/auth/sync', {
+        nombre,
+        correo,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      
+      return { token, user: res.data.data }
+    },
 
   register: async ({ nombre, correo, password, rol_solicitado }) => {
     const credential = await createUserWithEmailAndPassword(auth, correo, password)

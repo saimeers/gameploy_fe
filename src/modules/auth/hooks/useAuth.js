@@ -36,18 +36,29 @@ export function useAuth() {
   const loginWithGoogle = async () => {
     setLoading(true)
     try {
-      const { token, user } = await authService.loginWithGoogle()
+      const result = await authService.loginWithGoogle()
+
+      if (result.needsRegistration) {
+        toast.info('Casi listo', {
+          description: 'Completa estos últimos datos para crear tu cuenta.',
+        })
+        navigate('/register', { state: { googleData: result.googleData } })
+        return 
+      }
+
+      const { token, user } = result
 
       if (user.rol?.nombre === 'pendiente') {
         toast.warning('Cuenta en revisión', {
           description: 'Tu cuenta está pendiente de aprobación por un administrador.',
         })
-        return
+        return 
       }
 
       setAuth(token, user)
       toast.success(`Bienvenido, ${user.nombre}`)
       redirectByRole(user.rol?.nombre, navigate)
+
     } catch (err) {
       const msg = err.response?.data?.message ?? 'No se pudo iniciar sesión con Google.'
       toast.error('Error', { description: msg })
@@ -82,8 +93,8 @@ export function useAuth() {
 }
 
 function redirectByRole(role, navigate) {
-  if (role === 'admin')       navigate('/admin')
-  else if (role === 'docente')     navigate('/teacher')
-  else if (role === 'estudiante')  navigate('/student')
+  if (role === 'admin') navigate('/admin')
+  else if (role === 'docente') navigate('/teacher')
+  else if (role === 'estudiante') navigate('/student')
   else navigate('/')
 }
