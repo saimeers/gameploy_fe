@@ -1,0 +1,102 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background:            var(--background);
+  --color-foreground:            var(--foreground);
+  --color-card:                  var(--card);
+  --color-card-foreground:       var(--card-foreground);
+  --color-primary:               var(--primary);
+  --color-primary-foreground:    var(--primary-foreground);
+  --color-secondary:             var(--secondary);
+  --color-secondary-foreground:  var(--secondary-foreground);
+  --color-muted:                 var(--muted);
+  --color-muted-foreground:      var(--muted-foreground);
+  --color-accent:                var(--accent);
+  --color-accent-foreground:     var(--accent-foreground);
+  --color-destructive:           var(--destructive);
+  --color-border:                var(--border);
+  --color-input:                 var(--input);
+  --color-ring:                  var(--ring);
+}
+
+/* ── Dark (default – Railway-inspired) ─────────────── */
+:root {
+  --radius: 0.5rem;
+
+  --background:            hsl(250, 24%, 9%);
+  --foreground:            hsl(0, 0%, 100%);
+
+  --card:                  hsl(250, 21%, 11%);
+  --card-foreground:       hsl(0, 0%, 100%);
+
+  --popover:               hsl(248, 21%, 13%);
+  --popover-foreground:    hsl(0, 0%, 100%);
+
+  /* primary = purple/pink Railway accent */
+  --primary:               hsl(270, 60%, 52%);
+  --primary-foreground:    hsl(0, 0%, 100%);
+
+  --secondary:             hsl(250, 21%, 11%);
+  --secondary-foreground:  hsl(246, 6%, 87%);
+
+  --muted:                 hsl(248, 21%, 13%);
+  --muted-foreground:      hsl(246, 6%, 55%);
+
+  --accent:                hsl(246, 11%, 22%);
+  --accent-foreground:     hsl(0, 0%, 100%);
+
+  --destructive:           hsl(0, 72%, 51%);
+
+  --border:                hsl(246, 11%, 22%);
+  --input:                 hsl(246, 11%, 22%);
+  --ring:                  hsl(270, 60%, 52%);
+}
+
+/* ── Light ──────────────────────────────────────────── */
+.light {
+  --background:            hsl(246, 4%, 97%);
+  --foreground:            hsl(250, 24%, 9%);
+
+  --card:                  hsl(0, 0%, 100%);
+  --card-foreground:       hsl(250, 24%, 9%);
+
+  --popover:               hsl(0, 0%, 100%);
+  --popover-foreground:    hsl(250, 24%, 9%);
+
+  --primary:               hsl(270, 60%, 52%);
+  --primary-foreground:    hsl(0, 0%, 100%);
+
+  --secondary:             hsl(246, 18%, 15%);
+  --secondary-foreground:  hsl(0, 0%, 100%);
+
+  --muted:                 hsl(246, 4%, 97%);
+  --muted-foreground:      hsl(246, 7%, 45%);
+
+  --accent:                hsl(270, 38%, 12%);
+  --accent-foreground:     hsl(0, 0%, 100%);
+
+  --destructive:           hsl(0, 72%, 51%);
+
+  --border:                hsl(246, 8%, 35%);
+  --input:                 hsl(246, 8%, 35%);
+  --ring:                  hsl(270, 60%, 52%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Outfit", sans-serif;
+  }
+}
