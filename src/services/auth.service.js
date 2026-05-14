@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider,
   signOut,
   getAuth,
+  updatePassword,
 } from 'firebase/auth'
 import { firebaseApp } from '@/lib/firebase'
 import api from './api'
@@ -52,13 +53,27 @@ export const authService = {
       return { token, user: res.data.data }
     },
 
-  register: async ({ nombre, correo, password, rol_solicitado }) => {
-    const credential = await createUserWithEmailAndPassword(auth, correo, password)
-    const token = await credential.user.getIdToken()
+  register: async ({ nombre, correo, password, rol_solicitado, isGoogleCompletion }) => {
+    let firebaseUser;
+
+    if (isGoogleCompletion) {
+      firebaseUser = auth.currentUser;
+      
+      if (password) {
+        await updatePassword(firebaseUser, password);
+      }
+    } else {
+      const credential = await createUserWithEmailAndPassword(auth, correo, password);
+      firebaseUser = credential.user;
+    }
+
+    const token = await firebaseUser.getIdToken();
+    
     const res = await api.post('/auth/register', {
       nombre, correo, rol_solicitado,
-    }, { headers: { Authorization: `Bearer ${token}` } })
-    return { token, user: res.data.data }
+    }, { headers: { Authorization: `Bearer ${token}` } });
+    
+    return { token, user: res.data.data };
   },
 
   logout: async () => {

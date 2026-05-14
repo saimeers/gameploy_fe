@@ -67,10 +67,10 @@ export function useAuth() {
     }
   }
 
-  const register = async ({ nombre, correo, password, rol_solicitado }) => {
+ const register = async ({ nombre, correo, password, rol_solicitado, isGoogleCompletion }) => {
     setLoading(true)
     try {
-      await authService.register({ nombre, correo, password, rol_solicitado })
+      await authService.register({ nombre, correo, password, rol_solicitado, isGoogleCompletion })
       toast.success('Registro exitoso', {
         description: 'Tu cuenta está pendiente de aprobación. Te avisaremos pronto.',
       })

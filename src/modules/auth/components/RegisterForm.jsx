@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Loader2, GraduationCap, BookOpen } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
@@ -27,8 +27,16 @@ const ROLES = [
 export default function RegisterForm() {
   const { loading, register: registerUser } = useAuth()
   const [rolSeleccionado, setRolSeleccionado] = useState(null)
+  
+  const location = useLocation()
+  const googleData = location.state?.googleData
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm()
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+    defaultValues: {
+      nombre: googleData?.nombre || '',
+      correo: googleData?.correo || '',
+    }
+  })
 
   const onSubmit = (data) => {
     if (!rolSeleccionado) return
@@ -37,22 +45,27 @@ export default function RegisterForm() {
       correo: data.correo,
       password: data.password,
       rol_solicitado: rolSeleccionado,
+      isGoogleCompletion: !!googleData 
     })
   }
 
   return (
     <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-xl">Crear cuenta</CardTitle>
+        <CardTitle className="text-xl">
+          {googleData ? 'Completa tu registro' : 'Crear cuenta'}
+        </CardTitle>
         <CardDescription>
-          Tu cuenta quedará pendiente de aprobación por un administrador
+          {googleData 
+            ? 'Casi listo. Elige tu rol y asigna una contraseña para tu cuenta.'
+            : 'Tu cuenta quedará pendiente de aprobación por un administrador'
+          }
         </CardDescription>
       </CardHeader>
 
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
-          {/* Role selector */}
           <div className="space-y-2">
             <Label>¿Cómo quieres registrarte?</Label>
             <div className="grid grid-cols-2 gap-3">
@@ -85,7 +98,7 @@ export default function RegisterForm() {
               <Input
                 id="nombre"
                 placeholder="Tu nombre"
-                disabled={loading}
+                disabled={loading || !!googleData} 
                 {...register('nombre', { required: 'El nombre es requerido' })}
               />
               {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
@@ -97,7 +110,7 @@ export default function RegisterForm() {
                 id="correo"
                 type="email"
                 placeholder="tu@correo.com"
-                disabled={loading}
+                disabled={loading || !!googleData}
                 {...register('correo', {
                   required: 'El correo es requerido',
                   pattern: { value: /^\S+@\S+\.\S+$/, message: 'Correo inválido' },
@@ -148,12 +161,14 @@ export default function RegisterForm() {
                 : 'Selecciona un rol para continuar'}
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground">
-            ¿Ya tienes cuenta?{' '}
-            <Link to="/login" className="text-foreground underline-offset-4 hover:underline">
-              Inicia sesión
-            </Link>
-          </p>
+          {!googleData && (
+            <p className="text-center text-sm text-muted-foreground">
+              ¿Ya tienes cuenta?{' '}
+              <Link to="/login" className="text-foreground underline-offset-4 hover:underline">
+                Inicia sesión
+              </Link>
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>
