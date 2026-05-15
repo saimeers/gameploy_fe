@@ -8,6 +8,7 @@ import PendingPage          from '@/pages/PendingPage'
 import DashboardLayout      from '@/components/layout/DashboardLayout'
 import ProtectedRoute       from '@/components/ProtectedRoute'
 import ErrorPage            from '@/components/ErrorPage'
+import GamePage         from '@/pages/GamePage'
 
 // Student
 import StudentDashboard     from '@/modules/student/pages/StudentDashboard'
@@ -22,6 +23,7 @@ import ExplorePage          from '@/modules/teacher/pages/ExplorePage'
 import AdminDashboard       from '@/modules/admin/pages/AdminDashboard'
 import UsersPage            from '@/modules/admin/pages/UsersPage'
 import ProjectsAdminPage    from '@/modules/admin/pages/ProjectsAdminPage'
+import CatalogAdminPage from '@/modules/admin/pages/CatalogAdminPage'
 
 export const router = createBrowserRouter([
   { path: '/',                 element: <HomePage /> },
@@ -30,6 +32,7 @@ export const router = createBrowserRouter([
   { path: '/forgot-password',  element: <ForgotPasswordPage /> },
   { path: '/reset-password',   element: <ResetPasswordPage /> },
   { path: '/pending',          element: <PendingPage /> },
+  { path: '/games/:slug', element: <GamePage /> },
 
   // Student
   {
@@ -57,6 +60,7 @@ export const router = createBrowserRouter([
       { path: '/admin',          element: <AdminDashboard /> },
       { path: '/admin/users',    element: <UsersPage /> },
       { path: '/admin/projects', element: <ProjectsAdminPage /> },
+      { path: '/admin/catalog', element: <CatalogAdminPage /> },
     ],
   },
 

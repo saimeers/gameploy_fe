@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, FolderOpen, Plus, Search,
   MessageSquare, Users, Settings, Gamepad2,
+  Tag,
 } from 'lucide-react'
 import {
   Sidebar, SidebarContent, SidebarFooter,
@@ -51,6 +52,10 @@ const navByRole = {
       url: '/admin/projects',
       icon: Gamepad2,
     },
+    { 
+      title: 'Catálogo',   
+      url: '/admin/catalog',   
+      icon: Tag }
   ],
 }
 

@@ -247,7 +247,7 @@ export default function ProjectsAdminPage() {
 
       {/* Delete confirm */}
       <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-background text-popover-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar proyecto</AlertDialogTitle>
             <AlertDialogDescription>

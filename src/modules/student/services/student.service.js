@@ -61,4 +61,14 @@ export const studentService = {
 
   getEtiquetas: () =>
     api.get('/search/etiquetas'),
+
+  // Files
+  deleteFile: (projectId, versionId, fileId) =>
+    api.delete(`/projects/${projectId}/versions/${versionId}/files/${fileId}`),
+
+  getFileUrl: (key) =>
+    api.get(`/public/files/url?key=${encodeURIComponent(key)}`),
+
+  getPublicGame: (slug) =>
+    api.get(`/public/games/${slug}`),
 }

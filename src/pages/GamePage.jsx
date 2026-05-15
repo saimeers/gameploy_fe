@@ -1,0 +1,351 @@
+import { useEffect, useState, useRef } from 'react'
+import { useParams, Navigate, Link } from 'react-router-dom'
+import {
+    Loader2, Gamepad2, User, Calendar, Tag,
+    Globe, Link2, ExternalLink, Star, ChevronRight,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import api from '@/services/api'
+
+const INPUT_LABELS = {
+    teclado: '⌨️ Teclado',
+    mouse: '🖱️ Mouse',
+    mando: '🎮 Mando',
+    mobile: '📱 Mobile',
+}
+
+function GamePlayer({ archivos, projectName, projectId, versionId }) {
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [started, setStarted] = useState(false)
+
+    useEffect(() => {
+        const webglFile = archivos?.find(f => f.tipo === 'juego_webgl')
+
+        if (!webglFile) {
+            setError('No hay archivos del juego disponibles.')
+        }
+
+        setLoading(false)
+    }, [archivos])
+
+    if (loading) return (
+        <div className="flex items-center justify-center h-[500px] rounded-xl border border-border/50 bg-card/40">
+            <div className="text-center space-y-2">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="text-sm text-muted-foreground">Cargando juego...</p>
+            </div>
+        </div>
+    )
+
+    if (error) return (
+        <div className="flex items-center justify-center h-64 rounded-xl border border-border/50 bg-card/40">
+            <div className="text-center space-y-2">
+                <Gamepad2 className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
+        </div>
+    )
+
+    const iframeSrc =
+        `${import.meta.env.VITE_API_URL}/play/${projectId}/${versionId}/index.html`
+
+    return (
+        <div className="space-y-3">
+            {!started ? (
+                <div className="flex flex-col items-center justify-center h-[500px] rounded-xl border border-border/50 bg-gradient-to-br from-primary/5 to-accent/10 gap-4">
+                    <div className="rounded-full bg-primary/10 p-6">
+                        <Gamepad2 className="h-12 w-12 text-primary" />
+                    </div>
+
+                    <div className="text-center space-y-1">
+                        <p className="font-semibold">{projectName}</p>
+                        <p className="text-sm text-muted-foreground">
+                            Haz click para iniciar el juego
+                        </p>
+                    </div>
+
+                    <Button onClick={() => setStarted(true)} className="gap-2">
+                        <Gamepad2 className="h-4 w-4" />
+                        Jugar ahora
+                    </Button>
+                </div>
+            ) : (
+                <div className="relative rounded-xl overflow-hidden border border-border/50">
+                    <iframe
+                        src={iframeSrc}
+                        className="w-full"
+                        style={{ height: '600px' }}
+                        allow="fullscreen"
+                        allowFullScreen
+                        title={projectName}
+                    />
+                </div>
+            )}
+        </div>
+    )
+}
+
+export default function GamePage() {
+    const { slug } = useParams()
+    const [project, setProject] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [notFound, setNotFound] = useState(false)
+    const [forbidden, setForbidden] = useState(false)
+
+    useEffect(() => {
+        api.get(`/public/games/${slug}`)
+            .then(res => setProject(res.data.data))
+            .catch(err => {
+                if (err.response?.status === 404) setNotFound(true)
+                else if (err.response?.status === 403) setForbidden(true)
+                else toast.error('Error al cargar el proyecto')
+            })
+            .finally(() => setLoading(false))
+    }, [slug])
+
+    if (loading) return (
+        <div className="flex items-center justify-center min-h-svh bg-background">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    )
+
+    if (notFound) return (
+        <div className="flex flex-col items-center justify-center min-h-svh bg-background gap-4">
+            <Gamepad2 className="h-12 w-12 text-muted-foreground/30" />
+            <h1 className="text-xl font-semibold">Proyecto no encontrado</h1>
+            <p className="text-sm text-muted-foreground">
+                El enlace puede haber expirado o el proyecto fue eliminado.
+            </p>
+            <Link to="/"><Button variant="outline">Ir al inicio</Button></Link>
+        </div>
+    )
+
+    if (forbidden) return (
+        <div className="flex flex-col items-center justify-center min-h-svh bg-background gap-4">
+            <Gamepad2 className="h-12 w-12 text-muted-foreground/30" />
+            <h1 className="text-xl font-semibold">Proyecto no disponible</h1>
+            <p className="text-sm text-muted-foreground">
+                Este proyecto no está publicado o su acceso es privado.
+            </p>
+            <Link to="/"><Button variant="outline">Ir al inicio</Button></Link>
+        </div>
+    )
+
+    const activeVersion = project.versiones?.[0]
+    const portada = activeVersion?.archivos?.find(f => f.tipo === 'portada')
+    const controlesByType = (project.controles ?? []).reduce((acc, c) => {
+        if (!acc[c.tipo_entrada]) acc[c.tipo_entrada] = []
+        acc[c.tipo_entrada].push(c)
+        return acc
+    }, {})
+
+    return (
+        <div className="min-h-svh bg-background">
+
+            {/* Top bar */}
+            <div className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+                <div className="container mx-auto px-6 py-3 flex items-center justify-between">
+                    <Link to="/" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                        Gameploy
+                    </Link>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Globe className="h-3.5 w-3.5" />
+                        <span>Semillero VIRAL</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="container mx-auto px-6 py-8 max-w-5xl space-y-8">
+
+                {/* Header */}
+                <div className="space-y-4">
+                    <div className="flex flex-wrap items-start gap-3">
+                        <div className="flex-1 min-w-0 space-y-2">
+                            <h1 className="text-3xl font-bold tracking-tight">{project.nombre}</h1>
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1.5">
+                                    <User className="h-3.5 w-3.5" />
+                                    <span>{project.usuario?.nombre}</span>
+                                </div>
+                                {project.fecha_publicacion && (
+                                    <>
+                                        <span>·</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5" />
+                                            <span>{new Date(project.fecha_publicacion).toLocaleDateString('es-CO')}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {activeVersion && (
+                                    <>
+                                        <span>·</span>
+                                        <span className="font-mono text-xs">v{activeVersion.numero_version}</span>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                {project.categoria && (
+                                    <Badge variant="outline" className="text-xs">
+                                        {project.categoria.nombre}
+                                    </Badge>
+                                )}
+                                {project.etiquetas?.map(pe => (
+                                    <Badge key={pe.id_etiqueta} variant="outline" className="text-xs border-border/50 text-muted-foreground">
+                                        <Tag className="h-3 w-3 mr-1" />
+                                        {pe.etiqueta?.nombre}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {project.descripcion && (
+                        <p className="text-muted-foreground leading-relaxed max-w-2xl">{project.descripcion}</p>
+                    )}
+                </div>
+
+                {/* Game player */}
+                <GamePlayer
+                    archivos={activeVersion?.archivos}
+                    projectName={project.nombre}
+                    projectId={project.id}
+                    versionId={activeVersion?.id}
+                />
+
+                <div className="grid gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2 space-y-6">
+
+                        {/* Instrucciones */}
+                        {project.instrucciones && (
+                            <Card className="border-border/50 bg-card/60">
+                                <CardHeader>
+                                    <CardTitle className="text-sm">Instrucciones</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                                        {project.instrucciones}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Controles */}
+                        {Object.keys(controlesByType).length > 0 && (
+                            <Card className="border-border/50 bg-card/60">
+                                <CardHeader>
+                                    <CardTitle className="text-sm">Controles del juego</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {Object.entries(controlesByType).map(([tipo, items]) => (
+                                        <div key={tipo} className="space-y-2">
+                                            <p className="text-xs font-medium text-muted-foreground">
+                                                {INPUT_LABELS[tipo] ?? tipo}
+                                            </p>
+                                            <div className="space-y-1.5">
+                                                {items.map(control => (
+                                                    <div key={control.id} className="flex items-center gap-3">
+                                                        <kbd className="rounded bg-accent/60 border border-border/50 px-2 py-0.5 text-xs font-mono min-w-fit">
+                                                            {control.tecla_boton}
+                                                        </kbd>
+                                                        <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {control.descripcion_accion}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Comments */}
+                        {project.comentarios?.length > 0 && (
+                            <Card className="border-border/50 bg-card/60">
+                                <CardHeader>
+                                    <CardTitle className="text-sm">
+                                        Evaluaciones ({project.comentarios.length})
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {project.comentarios.map(comment => (
+                                        <div key={comment.id} className="space-y-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-6 w-6 rounded-md">
+                                                        <AvatarFallback className="rounded-md text-xs bg-primary/10 text-primary">
+                                                            {comment.usuario?.nombre.charAt(0).toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-sm font-medium">{comment.usuario?.nombre}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    {comment.calificacion && Array.from({ length: 5 }).map((_, i) => (
+                                                        <Star
+                                                            key={i}
+                                                            className={`h-3.5 w-3.5 ${i < comment.calificacion ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground pl-8">{comment.contenido}</p>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Sidebar info */}
+                    <div className="space-y-4">
+                        <Card className="border-border/50 bg-card/60">
+                            <CardHeader>
+                                <CardTitle className="text-sm">Información</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Estado</span>
+                                    <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                                        Publicado
+                                    </Badge>
+                                </div>
+                                {project.categoria && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Categoría</span>
+                                        <span>{project.categoria.nombre}</span>
+                                    </div>
+                                )}
+                                {activeVersion && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Versión</span>
+                                        <span className="font-mono text-xs">v{activeVersion.numero_version}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Autor</span>
+                                    <span>{project.usuario?.nombre}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-border/50 bg-card/60">
+                            <CardContent className="pt-4">
+                                <p className="text-xs text-muted-foreground text-center">
+                                    Desarrollado en el{' '}
+                                    <span className="text-foreground">Semillero VIRAL</span>
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
