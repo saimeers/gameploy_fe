@@ -58,8 +58,8 @@ const navByRole = {
 
 const labelByRole = {
   estudiante: 'Estudiante',
-  docente:    'Docente',
-  admin:      'Administración',
+  docente: 'Docente',
+  admin: 'Administración',
 }
 
 export function AppSidebar({ ...props }) {
@@ -78,10 +78,16 @@ export function AppSidebar({ ...props }) {
             <SidebarMenuButton size="lg" asChild>
               <a >
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <img  src="/logo_gameploy.svg" alt="Logo" width={32} height={32} />
+                  <img
+                    src="/logo_gameploy.svg"
+                    alt="Logo"
+                    width={32}
+                    height={32}
+                    className="dark:invert"
+                  />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Gameploy</span>
+                  <span className="truncate font-semibold text-black dark:text-white">Gameploy</span>
                   <span className="truncate text-xs text-muted-foreground capitalize">{role}</span>
                 </div>
               </a>

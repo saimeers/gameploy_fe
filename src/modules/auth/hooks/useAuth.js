@@ -1,19 +1,24 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { getAuth } from 'firebase/auth'
+import { firebaseApp } from '@/lib/firebase'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/store/authStore'
 
+const auth = getAuth(firebaseApp)
+
 export function useAuth() {
   const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
-  const setAuth = useAuthStore(s => s.setAuth)
+  const navigate  = useNavigate()
+  const setAuth   = useAuthStore(s => s.setAuth)
   const clearAuth = useAuthStore(s => s.clearAuth)
 
   const loginWithEmail = async (correo, password) => {
     setLoading(true)
     try {
       const { token, user } = await authService.loginWithEmail(correo, password)
+      const photoURL = auth.currentUser?.photoURL ?? null
 
       if (user.rol?.nombre === 'pendiente') {
         toast.warning('Cuenta en revisión', {
@@ -22,7 +27,7 @@ export function useAuth() {
         return
       }
 
-      setAuth(token, user)
+      setAuth(token, user, photoURL)
       toast.success(`Bienvenido, ${user.nombre}`)
       redirectByRole(user.rol?.nombre, navigate)
     } catch (err) {
@@ -43,22 +48,22 @@ export function useAuth() {
           description: 'Completa estos últimos datos para crear tu cuenta.',
         })
         navigate('/register', { state: { googleData: result.googleData } })
-        return 
+        return
       }
 
       const { token, user } = result
+      const photoURL = auth.currentUser?.photoURL ?? null
 
       if (user.rol?.nombre === 'pendiente') {
         toast.warning('Cuenta en revisión', {
           description: 'Tu cuenta está pendiente de aprobación por un administrador.',
         })
-        return 
+        return
       }
 
-      setAuth(token, user)
+      setAuth(token, user, photoURL)
       toast.success(`Bienvenido, ${user.nombre}`)
       redirectByRole(user.rol?.nombre, navigate)
-
     } catch (err) {
       const msg = err.response?.data?.message ?? 'No se pudo iniciar sesión con Google.'
       toast.error('Error', { description: msg })
@@ -67,7 +72,7 @@ export function useAuth() {
     }
   }
 
- const register = async ({ nombre, correo, password, rol_solicitado, isGoogleCompletion }) => {
+  const register = async ({ nombre, correo, password, rol_solicitado, isGoogleCompletion }) => {
     setLoading(true)
     try {
       await authService.register({ nombre, correo, password, rol_solicitado, isGoogleCompletion })
@@ -76,7 +81,14 @@ export function useAuth() {
       })
       navigate('/login')
     } catch (err) {
-      const msg = err.response?.data?.message ?? 'No se pudo crear la cuenta.'
+      const firebaseMessages = {
+        'auth/provider-already-linked': 'Esta cuenta ya tiene contraseña vinculada.',
+        'auth/weak-password':           'La contraseña debe tener al menos 6 caracteres.',
+        'auth/email-already-in-use':    'Este correo ya está registrado.',
+      }
+      const msg = firebaseMessages[err.code]
+        ?? err.response?.data?.message
+        ?? 'No se pudo crear la cuenta.'
       toast.error('Error al registrarse', { description: msg })
     } finally {
       setLoading(false)
@@ -93,8 +105,8 @@ export function useAuth() {
 }
 
 function redirectByRole(role, navigate) {
-  if (role === 'admin') navigate('/admin')
-  else if (role === 'docente') navigate('/teacher')
+  if (role === 'admin')          navigate('/admin')
+  else if (role === 'docente')   navigate('/teacher')
   else if (role === 'estudiante') navigate('/student')
   else navigate('/')
 }

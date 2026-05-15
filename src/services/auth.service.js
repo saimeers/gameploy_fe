@@ -3,9 +3,10 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  EmailAuthProvider,
+  linkWithCredential,
   signOut,
   getAuth,
-  updatePassword,
 } from 'firebase/auth'
 import { firebaseApp } from '@/lib/firebase'
 import api from './api'
@@ -18,7 +19,6 @@ export const authService = {
   loginWithEmail: async (correo, password) => {
     const credential = await signInWithEmailAndPassword(auth, correo, password)
     const token = await credential.user.getIdToken()
-    // sync with our backend
     const res = await api.post('/auth/sync', {
       nombre: credential.user.displayName ?? correo.split('@')[0],
       correo,
@@ -33,16 +33,16 @@ export const authService = {
     const nombre = credential.user.displayName ?? ''
 
     const checkRes = await api.get(`/users/check?email=${correo}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+      headers: { Authorization: `Bearer ${token}` },
+    })
 
-    const exists = checkRes.data.data.exists;
+    const exists = checkRes.data.data.exists
 
     if (!exists) {
       return {
         needsRegistration: true,
-        googleData: { correo, nombre, token }
-      };
+        googleData: { correo, nombre, token },
+      }
     }
 
     const res = await api.post('/auth/sync', {
@@ -54,30 +54,33 @@ export const authService = {
   },
 
   register: async ({ nombre, correo, password, rol_solicitado, isGoogleCompletion }) => {
-    let firebaseUser = auth.currentUser; 
+    let firebaseUser
+    let token
 
-    const isAlreadyLogged = firebaseUser && firebaseUser.email === correo;
-
-    if (isGoogleCompletion || isAlreadyLogged) {
+    if (isGoogleCompletion) {
+      // User already authenticated via Google — link email/password provider
+      firebaseUser = auth.currentUser
       if (!firebaseUser) {
-        throw new Error('Se perdió la conexión con Google. Vuelve a intentar iniciar sesión.');
+        throw new Error('Sesión de Google perdida. Vuelve a iniciar sesión con Google.')
       }
 
-      if (password) {
-        await updatePassword(firebaseUser, password);
-      }
+      // Link the email+password credential to the existing Google account
+      const emailCredential = EmailAuthProvider.credential(correo, password)
+      await linkWithCredential(firebaseUser, emailCredential)
+
+      token = await firebaseUser.getIdToken()
     } else {
-      const credential = await createUserWithEmailAndPassword(auth, correo, password);
-      firebaseUser = credential.user;
+      // Normal email/password registration
+      const credential = await createUserWithEmailAndPassword(auth, correo, password)
+      firebaseUser = credential.user
+      token = await firebaseUser.getIdToken()
     }
-
-    const token = await firebaseUser.getIdToken();
 
     const res = await api.post('/auth/register', {
       nombre, correo, rol_solicitado,
-    }, { headers: { Authorization: `Bearer ${token}` } });
+    }, { headers: { Authorization: `Bearer ${token}` } })
 
-    return { token, user: res.data.data };
+    return { token, user: res.data.data }
   },
 
   logout: async () => {

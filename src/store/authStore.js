@@ -6,8 +6,9 @@ export const useAuthStore = create(
     (set) => ({
       token: null,
       user: null,
-      setAuth: (token, user) => set({ token, user }),
-      clearAuth: () => set({ token: null, user: null }),
+      photoURL: null,
+      setAuth: (token, user, photoURL = null) => set({ token, user, photoURL }),
+      clearAuth: () => set({ token: null, user: null, photoURL: null }),
     }),
     { name: 'gameploy-auth' }
   )

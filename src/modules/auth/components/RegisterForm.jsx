@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Loader2, GraduationCap, BookOpen } from 'lucide-react'
+import { Loader2, GraduationCap, BookOpen, Eye, EyeOff } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
 import { Label }    from '@/components/ui/label'
@@ -27,25 +27,27 @@ const ROLES = [
 export default function RegisterForm() {
   const { loading, register: registerUser } = useAuth()
   const [rolSeleccionado, setRolSeleccionado] = useState(null)
-  
-  const location = useLocation()
+  const [showPassword, setShowPassword]       = useState(false)
+  const [showConfirm, setShowConfirm]         = useState(false)
+
+  const location   = useLocation()
   const googleData = location.state?.googleData
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     defaultValues: {
       nombre: googleData?.nombre || '',
       correo: googleData?.correo || '',
-    }
+    },
   })
 
   const onSubmit = (data) => {
     if (!rolSeleccionado) return
     registerUser({
-      nombre: data.nombre,
-      correo: data.correo,
-      password: data.password,
-      rol_solicitado: rolSeleccionado,
-      isGoogleCompletion: !!googleData 
+      nombre:             data.nombre,
+      correo:             data.correo,
+      password:           data.password,
+      rol_solicitado:     rolSeleccionado,
+      isGoogleCompletion: !!googleData,
     })
   }
 
@@ -56,16 +58,16 @@ export default function RegisterForm() {
           {googleData ? 'Completa tu registro' : 'Crear cuenta'}
         </CardTitle>
         <CardDescription>
-          {googleData 
-            ? 'Casi listo. Elige tu rol y asigna una contraseña para tu cuenta.'
-            : 'Tu cuenta quedará pendiente de aprobación por un administrador'
-          }
+          {googleData
+            ? 'Elige tu rol y crea una contraseña para poder entrar también con correo.'
+            : 'Tu cuenta quedará pendiente de aprobación por un administrador.'}
         </CardDescription>
       </CardHeader>
 
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
+          {/* Role selector */}
           <div className="space-y-2">
             <Label>¿Cómo quieres registrarte?</Label>
             <div className="grid grid-cols-2 gap-3">
@@ -87,23 +89,23 @@ export default function RegisterForm() {
                 </button>
               ))}
             </div>
-            {!rolSeleccionado && errors.submit &&
-              <p className="text-xs text-destructive">Selecciona un rol para continuar</p>}
           </div>
 
-          {/* Fields */}
           <div className="space-y-3">
+
+            {/* Nombre */}
             <div className="space-y-1.5">
               <Label htmlFor="nombre">Nombre completo</Label>
               <Input
                 id="nombre"
                 placeholder="Tu nombre"
-                disabled={loading || !!googleData} 
+                disabled={loading || !!googleData}
                 {...register('nombre', { required: 'El nombre es requerido' })}
               />
               {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
             </div>
 
+            {/* Correo */}
             <div className="space-y-1.5">
               <Label htmlFor="correo">Correo electrónico</Label>
               <Input
@@ -119,31 +121,62 @@ export default function RegisterForm() {
               {errors.correo && <p className="text-xs text-destructive">{errors.correo.message}</p>}
             </div>
 
+            {/* Contraseña — siempre visible, Google completion también la necesita para linkear */}
             <div className="space-y-1.5">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                disabled={loading}
-                {...register('password', {
-                  required: 'La contraseña es requerida',
-                  minLength: { value: 6, message: 'Mínimo 6 caracteres' },
-                })}
-              />
+              <Label htmlFor="password">
+                {googleData ? 'Crea una contraseña' : 'Contraseña'}
+              </Label>
+              {googleData && (
+                <p className="text-xs text-muted-foreground">
+                  Con esta contraseña podrás entrar también con correo y contraseña.
+                </p>
+              )}
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  disabled={loading}
+                  className="pr-10"
+                  {...register('password', {
+                    required: 'La contraseña es requerida',
+                    minLength: { value: 6, message: 'Mínimo 6 caracteres' },
+                  })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
 
+            {/* Confirmar contraseña */}
             <div className="space-y-1.5">
               <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                disabled={loading}
-                {...register('confirmPassword', {
-                  required: 'Confirma tu contraseña',
-                  validate: val => val === watch('password') || 'Las contraseñas no coinciden',
-                })}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirm ? 'text' : 'password'}
+                  disabled={loading}
+                  className="pr-10"
+                  {...register('confirmPassword', {
+                    required: 'Confirma tu contraseña',
+                    validate: val => val === watch('password') || 'Las contraseñas no coinciden',
+                  })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
             </div>
           </div>
@@ -157,7 +190,9 @@ export default function RegisterForm() {
             {loading
               ? 'Creando cuenta...'
               : rolSeleccionado
-                ? `Registrarme como ${rolSeleccionado}`
+                ? googleData
+                  ? `Completar registro como ${rolSeleccionado}`
+                  : `Registrarme como ${rolSeleccionado}`
                 : 'Selecciona un rol para continuar'}
           </Button>
 
