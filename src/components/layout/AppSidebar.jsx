@@ -14,16 +14,14 @@ import { useAuthStore } from '@/store/authStore'
 // Nav items por rol
 const navByRole = {
   estudiante: [
-    {
-      title: 'Mis proyectos',
-      url: '/student',
-      icon: FolderOpen,
-    },
-    {
-      title: 'Nuevo proyecto',
-      url: '/student/new',
-      icon: Plus,
-    },
+    { 
+      title: 'Mis proyectos',  
+      url: '/student',     
+      icon: FolderOpen },
+    { 
+      title: 'Nuevo proyecto', 
+      url: '/student/new', 
+      icon: Plus },
   ],
   docente: [
     {

@@ -11,7 +11,8 @@ import ErrorPage            from '@/components/ErrorPage'
 
 // Student
 import StudentDashboard     from '@/modules/student/pages/StudentDashboard'
-import MyProjectsPage       from '@/modules/student/pages/MyProjectsPage'
+import NewProjectPage     from '@/modules/student/pages/NewProjectPage'
+import ProjectDetailPage  from '@/modules/student/pages/ProjectDetailPage'
 
 // Teacher
 import TeacherDashboard     from '@/modules/teacher/pages/TeacherDashboard'
@@ -34,8 +35,9 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute allowedRoles={['estudiante']}><DashboardLayout /></ProtectedRoute>,
     children: [
-      { path: '/student',     element: <StudentDashboard /> },
-      { path: '/student/new', element: <MyProjectsPage /> },
+      { path: '/student',                   element: <StudentDashboard /> },
+      { path: '/student/new',               element: <NewProjectPage /> },
+      { path: '/student/projects/:id',      element: <ProjectDetailPage /> },
     ],
   },
 
