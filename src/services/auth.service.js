@@ -27,38 +27,42 @@ export const authService = {
   },
 
   loginWithGoogle: async () => {
-      const credential = await signInWithPopup(auth, googleProvider)
-      const token = await credential.user.getIdToken()
-      const correo = credential.user.email
-      const nombre = credential.user.displayName ?? ''
+    const credential = await signInWithPopup(auth, googleProvider)
+    const token = await credential.user.getIdToken()
+    const correo = credential.user.email
+    const nombre = credential.user.displayName ?? ''
 
-      const checkRes = await api.get(`/users/check?email=${correo}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+    const checkRes = await api.get(`/users/check?email=${correo}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-      const exists = checkRes.data.data.exists;
+    const exists = checkRes.data.data.exists;
 
-      if (!exists) {
-        return { 
-          needsRegistration: true, 
-          googleData: { correo, nombre, token } 
-        };
-      }
+    if (!exists) {
+      return {
+        needsRegistration: true,
+        googleData: { correo, nombre, token }
+      };
+    }
 
-      const res = await api.post('/auth/sync', {
-        nombre,
-        correo,
-      }, { headers: { Authorization: `Bearer ${token}` } })
-      
-      return { token, user: res.data.data }
-    },
+    const res = await api.post('/auth/sync', {
+      nombre,
+      correo,
+    }, { headers: { Authorization: `Bearer ${token}` } })
+
+    return { token, user: res.data.data }
+  },
 
   register: async ({ nombre, correo, password, rol_solicitado, isGoogleCompletion }) => {
-    let firebaseUser;
+    let firebaseUser = auth.currentUser; 
 
-    if (isGoogleCompletion) {
-      firebaseUser = auth.currentUser;
-      
+    const isAlreadyLogged = firebaseUser && firebaseUser.email === correo;
+
+    if (isGoogleCompletion || isAlreadyLogged) {
+      if (!firebaseUser) {
+        throw new Error('Se perdió la conexión con Google. Vuelve a intentar iniciar sesión.');
+      }
+
       if (password) {
         await updatePassword(firebaseUser, password);
       }
@@ -68,11 +72,11 @@ export const authService = {
     }
 
     const token = await firebaseUser.getIdToken();
-    
+
     const res = await api.post('/auth/register', {
       nombre, correo, rol_solicitado,
     }, { headers: { Authorization: `Bearer ${token}` } });
-    
+
     return { token, user: res.data.data };
   },
 
