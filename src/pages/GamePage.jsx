@@ -1,9 +1,16 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Navigate, Link } from 'react-router-dom'
+import Navbar from '@/pages/home/Navbar'
+import { useTheme } from '@/components/ThemeProvider'
 import {
     Loader2, Gamepad2, User, Calendar, Tag,
     Globe, Link2, ExternalLink, Star, ChevronRight,
+    Eye,
 } from 'lucide-react'
+import {
+    Dialog,
+    DialogContent,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -96,7 +103,12 @@ export default function GamePage() {
     const [loading, setLoading] = useState(true)
     const [notFound, setNotFound] = useState(false)
     const [forbidden, setForbidden] = useState(false)
-
+    const [mediaUrls, setMediaUrls] = useState({})
+    const { theme, setTheme } = useTheme()
+    const isDark = theme === 'dark'
+    const activeVersion = project?.versiones?.[0]
+    const [selectedImage, setSelectedImage] = useState(null)
+    
     useEffect(() => {
         api.get(`/public/games/${slug}`)
             .then(res => setProject(res.data.data))
@@ -107,6 +119,17 @@ export default function GamePage() {
             })
             .finally(() => setLoading(false))
     }, [slug])
+
+    useEffect(() => {
+        if (!project) return
+        const mediaFiles = activeVersion?.archivos?.filter(f => f.tipo !== 'juego_webgl') ?? []
+        mediaFiles.forEach(async file => {
+            try {
+                const res = await api.get(`/public/files/url?key=${encodeURIComponent(file.ruta_storage)}`)
+                setMediaUrls(prev => ({ ...prev, [file.id]: res.data.data.url }))
+            } catch { }
+        })
+    }, [project, activeVersion])
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-svh bg-background">
@@ -136,67 +159,87 @@ export default function GamePage() {
         </div>
     )
 
-    const activeVersion = project.versiones?.[0]
-    const portada = activeVersion?.archivos?.find(f => f.tipo === 'portada')
+
     const controlesByType = (project.controles ?? []).reduce((acc, c) => {
         if (!acc[c.tipo_entrada]) acc[c.tipo_entrada] = []
         acc[c.tipo_entrada].push(c)
         return acc
     }, {})
 
+    const portada = activeVersion?.archivos?.find(f => f.tipo === 'portada')
+    const capturas = activeVersion?.archivos?.filter(f => f.tipo === 'captura') ?? []
+    const visitCount = project?._count?.visitas ?? 0
+
     return (
         <div className="min-h-svh bg-background">
 
-            {/* Top bar */}
-            <div className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-                <div className="container mx-auto px-6 py-3 flex items-center justify-between">
-                    <Link to="/" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
-                        Gameploy
-                    </Link>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Globe className="h-3.5 w-3.5" />
-                        <span>Semillero VIRAL</span>
-                    </div>
-                </div>
-            </div>
+            <Navbar isDark={isDark} toggleTheme={() => setTheme(isDark ? 'light' : 'dark')} />
 
-            <div className="container mx-auto px-6 py-8 max-w-5xl space-y-8">
+            <div className="container mx-auto px-6 pt-24 pb-8 max-w-5xl space-y-8">
 
                 {/* Header */}
                 <div className="space-y-4">
+                    {/* Visitas */}
+
                     <div className="flex flex-wrap items-start gap-3">
-                        <div className="flex-1 min-w-0 space-y-2">
-                            <h1 className="text-3xl font-bold tracking-tight">{project.nombre}</h1>
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1.5">
-                                    <User className="h-3.5 w-3.5" />
-                                    <span>{project.usuario?.nombre}</span>
-                                </div>
-                                {project.fecha_publicacion && (
-                                    <>
-                                        <span>·</span>
+                        <div className="flex-1 min-w-0 space-y-3">
+
+                            {/* Título */}
+                            <div className="space-y-2">
+                                <h1 className="text-3xl font-bold tracking-tight">
+                                    {project.nombre}
+                                </h1>
+
+                                {/* Metadata */}
+                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+
+                                    <div className="flex items-center gap-1.5">
+                                        <User className="h-3.5 w-3.5" />
+                                        <span>{project.usuario?.nombre}</span>
+                                    </div>
+
+                                    {project.fecha_publicacion && (
                                         <div className="flex items-center gap-1.5">
                                             <Calendar className="h-3.5 w-3.5" />
-                                            <span>{new Date(project.fecha_publicacion).toLocaleDateString('es-CO')}</span>
+                                            <span>
+                                                {new Date(project.fecha_publicacion)
+                                                    .toLocaleDateString('es-CO')}
+                                            </span>
                                         </div>
-                                    </>
-                                )}
-                                {activeVersion && (
-                                    <>
-                                        <span>·</span>
-                                        <span className="font-mono text-xs">v{activeVersion.numero_version}</span>
-                                    </>
-                                )}
+                                    )}
+
+                                    {activeVersion && (
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-mono text-xs">
+                                                v{activeVersion.numero_version}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Views */}
+                                    <div className="flex items-center gap-1.5 rounded-full border border-border/50 bg-muted/30 px-2.5 py-1 text-xs">
+                                        <Eye className="h-3.5 w-3.5" />
+                                        <span>
+                                            {visitCount} visita{visitCount !== 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
+                            {/* Tags */}
                             <div className="flex flex-wrap gap-2">
                                 {project.categoria && (
                                     <Badge variant="outline" className="text-xs">
                                         {project.categoria.nombre}
                                     </Badge>
                                 )}
+
                                 {project.etiquetas?.map(pe => (
-                                    <Badge key={pe.id_etiqueta} variant="outline" className="text-xs border-border/50 text-muted-foreground">
+                                    <Badge
+                                        key={pe.id_etiqueta}
+                                        variant="outline"
+                                        className="text-xs border-border/50 text-muted-foreground"
+                                    >
                                         <Tag className="h-3 w-3 mr-1" />
                                         {pe.etiqueta?.nombre}
                                     </Badge>
@@ -207,6 +250,52 @@ export default function GamePage() {
 
                     {project.descripcion && (
                         <p className="text-muted-foreground leading-relaxed max-w-2xl">{project.descripcion}</p>
+                    )}
+
+                    {/* Capturas */}
+                    {capturas.length > 0 && (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-medium">Capturas</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Click para ampliar
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {capturas.map(cap => mediaUrls[cap.id] && (
+                                    <button
+                                        key={cap.id}
+                                        onClick={() => setSelectedImage(mediaUrls[cap.id])}
+                                        className="group relative overflow-hidden rounded-xl border border-border/50"
+                                    >
+                                        <img
+                                            src={mediaUrls[cap.id]}
+                                            alt="captura"
+                                            className="
+                            w-full h-32 md:h-40 object-cover
+                            transition-transform duration-300
+                            group-hover:scale-105
+                        "
+                                        />
+
+                                        {/* Overlay */}
+                                        <div className="
+                        absolute inset-0 bg-black/0
+                        group-hover:bg-black/30
+                        transition-colors duration-300
+                        flex items-center justify-center
+                    ">
+                                            <Eye className="
+                            h-5 w-5 text-white opacity-0
+                            group-hover:opacity-100
+                            transition-opacity
+                        " />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     )}
                 </div>
 
@@ -346,6 +435,17 @@ export default function GamePage() {
                     </div>
                 </div>
             </div>
+            <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+                <DialogContent className="bg-background text-popover-foreground">
+                    {selectedImage && (
+                        <img
+                            src={selectedImage}
+                            alt="Captura ampliada"
+                            className="w-full max-h-[85vh] object-contain rounded-lg"
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -15,7 +15,7 @@ import { useAuthStore } from '@/store/authStore'
 export default function StudentDashboard() {
   const user = useAuthStore(s => s.user)
   const [projects, setProjects] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [loading, setLoading] = useState(true)
   const [toDelete, setToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -47,6 +47,11 @@ export default function StudentDashboard() {
     }
   }
 
+  const totalComments = projects.reduce(
+    (acc, project) => acc + (project._count?.comentarios ?? 0),
+    0
+  )
+
   const published = projects.filter(p => p.estado === 'publicado').length
 
   return (
@@ -72,9 +77,9 @@ export default function StudentDashboard() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         {[
-          { label: 'Total de proyectos',   value: projects.length, icon: FolderOpen },
-          { label: 'Publicados',           value: published,       icon: Eye },
-          { label: 'Comentarios recibidos',value: '—',             icon: MessageSquare },
+          { label: 'Total de proyectos', value: projects.length, icon: FolderOpen },
+          { label: 'Publicados', value: published, icon: Eye },
+          { label: 'Comentarios recibidos', value: totalComments, icon: MessageSquare },
         ].map(({ label, value, icon: Icon }) => (
           <Card key={label} className="border-border/50 bg-card/60">
             <CardHeader className="flex flex-row items-center justify-between pb-2">

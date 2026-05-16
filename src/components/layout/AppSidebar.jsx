@@ -25,16 +25,19 @@ const navByRole = {
       icon: Plus },
   ],
   docente: [
-    {
-      title: 'Explorar',
-      url: '/teacher',
-      icon: Search,
-    },
-    {
-      title: 'Mis evaluaciones',
-      url: '/teacher/evaluations',
-      icon: MessageSquare,
-    },
+  { 
+    title: 'Inicio',          
+    url: '/teacher',              
+    icon: LayoutDashboard },
+  { 
+    title: 'Explorar juegos', 
+    url: '/teacher/explore',      
+    icon: Search },
+  { 
+    title: 'Mis evaluaciones',
+    url: '/teacher/evaluations',  
+    icon: MessageSquare },
+
   ],
   admin: [
     {

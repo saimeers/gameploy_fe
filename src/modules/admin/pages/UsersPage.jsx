@@ -4,9 +4,9 @@ import {
   Search, MoreHorizontal, ShieldCheck, UserX, UserCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge }   from '@/components/ui/badge'
-import { Button }  from '@/components/ui/button'
-import { Input }   from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -25,10 +25,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { adminService } from '../services/admin.service'
 
 const ROLE_LABELS = {
-  admin:      { label: 'Admin',     class: 'bg-primary/20 text-primary border-primary/30' },
-  estudiante: { label: 'Estudiante',class: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  docente:    { label: 'Docente',   class: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
-  pendiente:  { label: 'Pendiente', class: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  admin: { label: 'Admin', class: 'bg-primary/20 text-primary border-primary/30' },
+  estudiante: { label: 'Estudiante', class: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  docente: { label: 'Docente', class: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  pendiente: { label: 'Pendiente', class: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
 }
 
 function RoleBadge({ rol }) {
@@ -41,13 +41,13 @@ function RoleBadge({ rol }) {
 }
 
 export default function UsersPage() {
-  const [users, setUsers]       = useState([])
-  const [total, setTotal]       = useState(0)
-  const [page, setPage]         = useState(1)
-  const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
+  const [users, setUsers] = useState([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [filterRol, setFilterRol] = useState('all')
-  const [confirm, setConfirm]   = useState(null) // { type, user }
+  const [confirm, setConfirm] = useState(null) // { type, user }
   const limit = 10
 
   const fetchUsers = useCallback(async () => {
@@ -172,9 +172,22 @@ export default function UsersPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-7 w-7 rounded-md">
-                        <AvatarFallback className="rounded-md bg-primary/20 text-primary text-xs">
-                          {user.nombre.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
+                        {user.foto_perfil ? (
+                          <img
+                            src={user.foto_perfil}
+                            alt={user.nombre}
+                            className="h-full w-full object-cover rounded-md"
+                          />
+                        ) : (
+                          <AvatarFallback className="rounded-md bg-primary/20 text-primary text-xs">
+                            {user.nombre
+                              .split(' ')
+                              .map(n => n[0])
+                              .join('')
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       <div>
                         <p className="text-sm font-medium">{user.nombre}</p>
@@ -189,7 +202,7 @@ export default function UsersPage() {
                     <div className="flex items-center gap-1.5">
                       {user.activo
                         ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                        : <XCircle    className="h-3.5 w-3.5 text-destructive" />}
+                        : <XCircle className="h-3.5 w-3.5 text-destructive" />}
                       <span className="text-xs text-muted-foreground">
                         {user.activo ? 'Activo' : 'Inactivo'}
                       </span>
@@ -209,41 +222,56 @@ export default function UsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
 
-                        {/* Approve if pending */}
-                        {user.rol?.nombre === 'pendiente' && (
+                        {user.rol?.nombre === 'pendiente' ? (
                           <>
                             <DropdownMenuItem onClick={() => handleApprove(user)}>
                               <ShieldCheck className="mr-2 h-4 w-4 text-emerald-500" />
-                              Aprobar cuenta
+                              Aprobar ({user.rol_solicitado ?? 'usuario'})
                             </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => setConfirm({ type: 'reject', user })}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Rechazar
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <>
+                            {['estudiante', 'docente', 'admin'].map(rol => (
+                              user.rol?.nombre !== rol && (
+                                <DropdownMenuItem
+                                  key={rol}
+                                  onClick={() => handleRole(user.id, rol)}
+                                >
+                                  <ShieldCheck className="mr-2 h-4 w-4" />
+                                  Hacer {rol}
+                                </DropdownMenuItem>
+                              )
+                            ))}
+
                             <DropdownMenuSeparator />
+
+                            {/* Activar / Desactivar */}
+                            <DropdownMenuItem
+                              onClick={() => setConfirm({ type: 'status', user })}
+                              className={user.activo ? 'text-destructive focus:text-destructive' : ''}
+                            >
+                              {user.activo ? (
+                                <>
+                                  <UserX className="mr-2 h-4 w-4" />
+                                  Desactivar
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Activar
+                                </>
+                              )}
+                            </DropdownMenuItem>
                           </>
                         )}
-
-                        {/* Change role */}
-                        {['estudiante', 'docente', 'admin'].map(rol => (
-                          user.rol?.nombre !== rol && (
-                            <DropdownMenuItem
-                              key={rol}
-                              onClick={() => handleRole(user.id, rol)}
-                            >
-                              <ShieldCheck className="mr-2 h-4 w-4" />
-                              Hacer {rol}
-                            </DropdownMenuItem>
-                          )
-                        ))}
-
-                        <DropdownMenuSeparator />
-
-                        {/* Toggle status */}
-                        <DropdownMenuItem
-                          onClick={() => setConfirm({ type: 'status', user })}
-                          className={user.activo ? 'text-destructive focus:text-destructive' : ''}
-                        >
-                          {user.activo
-                            ? <><UserX className="mr-2 h-4 w-4" />Desactivar</>
-                            : <><UserCheck className="mr-2 h-4 w-4" />Activar</>}
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

@@ -43,8 +43,8 @@ export function NavUser({ user }) {
             >
               <UserAvatar nombre={user?.nombre} photoURL={photoURL} />
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user?.nombre}</span>
-                <span className="truncate text-xs text-muted-foreground">{user?.correo}</span>
+                  <span className="truncate font-medium">{user?.nombre}</span>
+                  <span className="truncate text-xs text-muted-foreground">{user?.correo}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -60,8 +60,7 @@ export function NavUser({ user }) {
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <UserAvatar nombre={user?.nombre} photoURL={photoURL} />
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user?.nombre}</span>
-                  <span className="truncate text-xs text-muted-foreground">{user?.correo}</span>
+                  <span className="truncate font-medium normal-case">{user?.nombre}</span>
                 </div>
               </div>
             </DropdownMenuLabel>

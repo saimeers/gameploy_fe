@@ -35,7 +35,7 @@ export const studentService = {
     api.post(`/projects/${projectId}/versions/${versionId}/files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
-        if (onProgress) onProgress(Math.round((e.loaded * 100) / e.total))
+        if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total))
       },
     }),
 

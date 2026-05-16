@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useForm }   from 'react-hook-form'
-import { toast }     from 'sonner'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 import {
   Plus, CheckCircle, Upload, FileArchive, Image, Camera,
-  Loader2, FolderOpen, Download, Trash2, Eye, EyeOff, X,
+  Loader2, FolderOpen, Download, Trash2, Eye, EyeOff, X, Expand
 } from 'lucide-react'
-import { Button }   from '@/components/ui/button'
-import { Input }    from '@/components/ui/input'
-import { Label }    from '@/components/ui/label'
-import { Badge }    from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
@@ -34,7 +34,7 @@ function parseVersion(str) {
     major: Number(match[1]),
     minor: Number(match[2]),
     patch: Number(match[3]),
-    beta:  !!match[4],
+    beta: !!match[4],
   }
 }
 
@@ -48,7 +48,7 @@ function suggestNext(latestStr, type) {
   if (type === 'major') return formatVersion({ major: v.major + 1, minor: 0, patch: 0, beta: false })
   if (type === 'minor') return formatVersion({ major: v.major, minor: v.minor + 1, patch: 0, beta: false })
   if (type === 'patch') return formatVersion({ major: v.major, minor: v.minor, patch: v.patch + 1, beta: false })
-  if (type === 'beta')  return formatVersion({ ...v, beta: true })
+  if (type === 'beta') return formatVersion({ ...v, beta: true })
   return ''
 }
 
@@ -75,26 +75,26 @@ async function validateWebGLZip(file) {
   const zip = await JSZip.loadAsync(file)
   const paths = Object.keys(zip.files)
 
-  const hasIndexHtml   = paths.some(p => p === 'index.html' || p.endsWith('/index.html'))
+  const hasIndexHtml = paths.some(p => p === 'index.html' || p.endsWith('/index.html'))
   const hasBuildFolder = paths.some(p => p.startsWith('Build/') || p.includes('/Build/'))
   const hasTemplateData = paths.some(p => p.startsWith('TemplateData/') || p.includes('/TemplateData/'))
 
   const errors = []
-  if (!hasIndexHtml)    errors.push('Falta index.html')
-  if (!hasBuildFolder)  errors.push('Falta carpeta /Build')
+  if (!hasIndexHtml) errors.push('Falta index.html')
+  if (!hasBuildFolder) errors.push('Falta carpeta /Build')
   if (!hasTemplateData) errors.push('Falta carpeta /TemplateData')
 
   // Check Build folder has the expected files
   const buildFiles = paths.filter(p => p.includes('Build/'))
-  const hasLoader    = buildFiles.some(p => p.endsWith('.loader.js'))
+  const hasLoader = buildFiles.some(p => p.endsWith('.loader.js'))
   const hasFramework = buildFiles.some(p => p.endsWith('.framework.js'))
-  const hasData      = buildFiles.some(p => p.endsWith('.data') || p.endsWith('.data.gz') || p.endsWith('.data.br'))
-  const hasWasm      = buildFiles.some(p => p.endsWith('.wasm') || p.endsWith('.wasm.gz') || p.endsWith('.wasm.br'))
+  const hasData = buildFiles.some(p => p.endsWith('.data') || p.endsWith('.data.gz') || p.endsWith('.data.br'))
+  const hasWasm = buildFiles.some(p => p.endsWith('.wasm') || p.endsWith('.wasm.gz') || p.endsWith('.wasm.br'))
 
-  if (!hasLoader)    errors.push('Falta .loader.js en /Build')
+  if (!hasLoader) errors.push('Falta .loader.js en /Build')
   if (!hasFramework) errors.push('Falta .framework.js en /Build')
-  if (!hasData)      errors.push('Falta .data en /Build')
-  if (!hasWasm)      errors.push('Falta .wasm en /Build')
+  if (!hasData) errors.push('Falta .data en /Build')
+  if (!hasWasm) errors.push('Falta .wasm en /Build')
 
   return { valid: errors.length === 0, errors }
 }
@@ -105,7 +105,7 @@ function FilePreviewModal({ files, open, onClose, onDelete, projectId, versionId
   const [urlCache, setUrlCache] = useState({})
   const [loadingUrl, setLoadingUrl] = useState({})
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [deleteInput, setDeleteInput]     = useState('')
+  const [deleteInput, setDeleteInput] = useState('')
 
   const loadUrl = async (file) => {
     if (urlCache[file.id]) return
@@ -137,7 +137,7 @@ function FilePreviewModal({ files, open, onClose, onDelete, projectId, versionId
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="bg-background text-popover-foreground sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm">Archivos de la versión</DialogTitle>
           </DialogHeader>
@@ -201,7 +201,7 @@ function FilePreviewModal({ files, open, onClose, onDelete, projectId, versionId
 
       {/* Permanent delete confirm — must type "eliminar" */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => { setDeleteConfirm(null); setDeleteInput('') }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-background text-popover-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar archivo permanentemente</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
@@ -235,99 +235,188 @@ function FilePreviewModal({ files, open, onClose, onDelete, projectId, versionId
 
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
-function UploadZone({ versionId, projectId, fileType, existingFile, onUploaded, onDelete }) {
-  const [progress, setProgress]   = useState(0)
+function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFileAdded, onFileDeleted }) {
+  const [progress, setProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [validating, setValidating] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [selectedPreview, setSelectedPreview] = useState(null)
+  const [previews, setPreviews] = useState({})
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleteInput, setDeleteInput] = useState('')
   const inputRef = useRef()
 
-  const isWebGL   = fileType === 'juego_webgl'
-  const isImage   = fileType === 'portada' || fileType === 'captura'
+  const isWebGL = fileType === 'juego_webgl'
+  const isPortada = fileType === 'portada'
+  const isCaptura = fileType === 'captura'
 
   const cfg = {
     juego_webgl: { label: 'Juego WebGL', icon: FileArchive, accept: '.zip', desc: 'Archivo .zip con /Build, /TemplateData, index.html' },
-    portada:     { label: 'Portada',     icon: Image,       accept: 'image/*', desc: 'Imagen de presentación (PNG, JPG)' },
-    captura:     { label: 'Captura',     icon: Camera,      accept: 'image/*', desc: 'Captura de pantalla del juego' },
+    portada: { label: 'Portada', icon: Image, accept: 'image/*', desc: 'Una imagen de presentación (PNG, JPG)' },
+    captura: { label: 'Capturas', icon: Camera, accept: 'image/*', desc: 'Capturas de pantalla — puedes subir múltiples' },
   }[fileType]
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (isWebGL) {
-      setValidating(true)
+  // Load presigned URLs for existing image files
+  useEffect(() => {
+    existingFiles.forEach(async (file) => {
+      if (previews[file.id]) return
       try {
-        const { valid, errors } = await validateWebGLZip(file)
-        if (!valid) {
-          toast.error('Estructura del .zip inválida', {
-            description: errors.join(' · '),
-            duration: 6000,
-          })
+        const res = await studentService.getFileUrl(file.ruta_storage)
+        setPreviews(prev => ({ ...prev, [file.id]: res.data.data.url }))
+      } catch { }
+    })
+  }, [existingFiles])
+
+  const handleFile = async (e) => {
+    const files = isCaptura ? Array.from(e.target.files) : [e.target.files?.[0]]
+    const validFiles = files.filter(Boolean)
+    if (!validFiles.length) return
+
+    for (const file of validFiles) {
+      if (isWebGL) {
+        setValidating(true)
+        try {
+          const JSZip = (await import('jszip')).default
+          const zip = await JSZip.loadAsync(file)
+          const paths = Object.keys(zip.files)
+          const errors = []
+          if (!paths.some(p => p === 'index.html' || p.endsWith('/index.html'))) errors.push('Falta index.html')
+          if (!paths.some(p => p.includes('Build/'))) errors.push('Falta carpeta /Build')
+          if (!paths.some(p => p.includes('TemplateData/'))) errors.push('Falta carpeta /TemplateData')
+          const buildFiles = paths.filter(p => p.includes('Build/'))
+          if (!buildFiles.some(p => p.endsWith('.loader.js'))) errors.push('Falta .loader.js')
+          if (!buildFiles.some(p => p.endsWith('.framework.js'))) errors.push('Falta .framework.js')
+          if (!buildFiles.some(p => p.endsWith('.data') || p.endsWith('.data.gz'))) errors.push('Falta .data')
+          if (!buildFiles.some(p => p.endsWith('.wasm') || p.endsWith('.wasm.gz'))) errors.push('Falta .wasm')
+          if (errors.length) {
+            toast.error('Estructura WebGL inválida', { description: errors.join(' · '), duration: 6000 })
+            e.target.value = ''
+            setValidating(false)
+            return
+          }
+          toast.success('Estructura WebGL válida ✓')
+        } catch {
+          toast.error('No se pudo validar el archivo')
           e.target.value = ''
+          setValidating(false)
           return
         }
-        toast.success('Estructura WebGL válida', { description: 'Subiendo archivos...' })
-      } catch {
-        toast.error('No se pudo validar el archivo .zip')
-        e.target.value = ''
-        return
-      } finally { setValidating(false) }
-    }
+        setValidating(false)
+      }
 
-    setUploading(true)
-    setProgress(0)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('fileType', fileType)
-      await studentService.uploadFile(projectId, versionId, formData, setProgress)
-      toast.success(`${cfg.label} subida correctamente`)
-      onUploaded()
-    } catch (err) {
-      toast.error(err.response?.data?.message ?? 'Error al subir el archivo')
-    } finally {
-      setUploading(false)
+      setUploading(true)
       setProgress(0)
-      e.target.value = ''
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('fileType', fileType)
+        const res = await studentService.uploadFile(projectId, versionId, formData, setProgress)
+        // Create local preview for images without reloading
+        if (isPortada || isCaptura) {
+          const localUrl = URL.createObjectURL(file)
+          setPreviews(prev => ({ ...prev, [res.data.data.id]: localUrl }))
+        }
+        onFileAdded(res.data.data)
+        toast.success(`${isCaptura ? 'Captura' : cfg.label} subida`)
+      } catch (err) {
+        toast.error(err.response?.data?.message ?? 'Error al subir')
+      } finally {
+        setUploading(false)
+        setProgress(0)
+      }
     }
+    e.target.value = ''
+  }
+
+  const confirmDelete = async () => {
+    if (deleteInput !== 'eliminar') return
+    try {
+      await studentService.deleteFile(projectId, versionId, deleteConfirm.id)
+      onFileDeleted(deleteConfirm.id)
+      // Revoke object URL if it was local
+      if (previews[deleteConfirm.id]?.startsWith('blob:')) {
+        URL.revokeObjectURL(previews[deleteConfirm.id])
+      }
+      setPreviews(prev => { const n = { ...prev }; delete n[deleteConfirm.id]; return n })
+      toast.success('Archivo eliminado')
+    } catch { toast.error('Error al eliminar') }
+    finally { setDeleteConfirm(null); setDeleteInput('') }
   }
 
   const busy = uploading || validating
+  const canAddMore = isCaptura || existingFiles.length === 0 || isWebGL
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label className="text-xs">{cfg.label}</Label>
-        {existingFile && isImage && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 text-xs gap-1 text-destructive hover:text-destructive"
-            onClick={() => onDelete(existingFile)}
-          >
-            <Trash2 className="h-3 w-3" />
-            Eliminar
-          </Button>
+        <Label className="text-xs font-medium">{cfg.label}</Label>
+        {(isPortada || isCaptura) && existingFiles.length > 0 && (
+          <span className="text-xs text-muted-foreground">{existingFiles.length} archivo{existingFiles.length !== 1 ? 's' : ''}</span>
         )}
       </div>
       <p className="text-xs text-muted-foreground">{cfg.desc}</p>
 
-      {/* Existing file indicator */}
-      {existingFile && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-          <span className="text-xs text-emerald-400 truncate">{existingFile.nombre_archivo}</span>
-          {isWebGL && (
-            <Badge variant="outline" className="ml-auto text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-              Listo para jugar
-            </Badge>
-          )}
+      {/* Existing files — image previews */}
+      {(isPortada || isCaptura) && existingFiles.length > 0 && (
+        <div className={`grid gap-2 ${isCaptura ? 'grid-cols-3' : 'grid-cols-1'}`}>
+          {existingFiles.map(file => (
+            <div key={file.id} className="relative group rounded-lg overflow-hidden border border-border/50 bg-muted/20">
+              {previews[file.id] ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPreview(previews[file.id])
+                    setPreviewOpen(true)
+                  }}
+                  className="relative w-full h-full group"
+                >
+                  <img
+                    src={previews[file.id]}
+                    alt={file.nombre_archivo}
+                    className={` w-full object-cover transition-transform duration-300 group-hover:scale-105 ${isPortada ? 'h-40' : 'h-24'} `}
+                  />
+
+                  {/* Overlay */}
+                  <div className=" absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center ">
+                    <Eye className=" h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity " />
+                  </div>
+                </button>
+              ) : (
+                <div className={`flex items-center justify-center bg-muted/30 ${isPortada ? 'h-40' : 'h-24'}`}>
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(file)}
+                className="absolute top-1.5 right-1.5 rounded-md bg-background/80 p-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </button>
+              {file.nombre_archivo && (
+                <div className="absolute bottom-0 left-0 right-0 bg-background/70 backdrop-blur-sm px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-xs truncate text-foreground">{file.nombre_archivo}</p>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Upload zone — always show for WebGL (replace), only if no file for images */}
-      {(isWebGL || !existingFile) && (
-        <label className={`flex items-center gap-3 rounded-lg border border-dashed border-border/60 px-4 py-3 cursor-pointer hover:border-border hover:bg-accent/20 transition-all ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
+      {/* WebGL existing indicator */}
+      {isWebGL && existingFiles[0] && (
+        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+          <span className="text-xs text-emerald-400 truncate">{existingFiles[0].nombre_archivo}</span>
+          <Badge variant="outline" className="ml-auto text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shrink-0">
+            Listo
+          </Badge>
+        </div>
+      )}
+
+      {/* Upload trigger */}
+      {canAddMore && (
+        <label className={`flex items-center gap-3 rounded-lg border border-dashed border-border/60 px-4 py-3 cursor-pointer hover:border-primary/50 hover:bg-accent/20 transition-all ${busy ? 'opacity-60 pointer-events-none' : ''}`}>
           <cfg.icon className="h-5 w-5 text-muted-foreground shrink-0" />
           <div className="flex-1 min-w-0">
             {validating ? (
@@ -339,7 +428,8 @@ function UploadZone({ versionId, projectId, fileType, existingFile, onUploaded, 
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">
-                {existingFile && isWebGL ? 'Click para reemplazar' : 'Click para seleccionar'} — {cfg.accept}
+                {existingFiles.length > 0 && isWebGL ? 'Click para reemplazar' : isCaptura ? 'Click para agregar captura' : 'Click para seleccionar'}
+                {' '}— {cfg.accept}
               </p>
             )}
           </div>
@@ -347,191 +437,33 @@ function UploadZone({ versionId, projectId, fileType, existingFile, onUploaded, 
             ref={inputRef}
             type="file"
             accept={cfg.accept}
+            multiple={isCaptura}
             className="hidden"
             onChange={handleFile}
             disabled={busy}
           />
         </label>
       )}
-    </div>
-  )
-}
 
-// ─── Version card ─────────────────────────────────────────────────────────────
-
-function VersionCard({ version, projectId, onActivated, onUploaded }) {
-  const [activating, setActivating]   = useState(false)
-  const [expanded, setExpanded]       = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [deleteFile, setDeleteFile]   = useState(null)
-  const [deleteInput, setDeleteInput] = useState('')
-
-  const handleActivate = async () => {
-    setActivating(true)
-    try {
-      await studentService.activateVersion(projectId, version.id)
-      toast.success(`Versión ${version.numero_version} activada`)
-      onActivated()
-    } catch { toast.error('Error al activar versión') }
-    finally { setActivating(false) }
-  }
-
-  const handlePermanentDelete = async () => {
-    if (deleteInput !== 'eliminar') return
-    try {
-      await api.delete(`/projects/${projectId}/versions/${version.id}/files/${deleteFile.id}`)
-      toast.success('Archivo eliminado permanentemente')
-      onUploaded()
-    } catch { toast.error('Error al eliminar') }
-    finally { setDeleteFile(null); setDeleteInput('') }
-  }
-
-  const filesByType = (version.archivos ?? []).reduce((acc, f) => {
-    if (!acc[f.tipo]) acc[f.tipo] = []
-    acc[f.tipo].push(f)
-    return acc
-  }, {})
-
-  const webglFile   = filesByType['juego_webgl']?.[0]
-  const portadaFile = filesByType['portada']?.[0]
-  const capturas    = filesByType['captura'] ?? []
-  const imageFiles  = [...(portadaFile ? [portadaFile] : []), ...capturas]
-
-  const FILE_TYPE_ICONS = {
-    juego_webgl: { icon: FileArchive, label: 'WebGL' },
-    portada:     { icon: Image,       label: 'Portada' },
-    captura:     { icon: Camera,      label: 'Captura' },
-  }
-
-  return (
-    <>
-      <Card className={`border-border/50 transition-colors ${version.es_activa ? 'bg-primary/5 border-primary/30' : 'bg-card/60'}`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-sm font-mono">v{version.numero_version}</CardTitle>
-              {version.es_activa && (
-                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1">
-                  <CheckCircle className="h-3 w-3" />
-                  Activa
-                </Badge>
-              )}
-              {version.numero_version.includes('beta') && (
-                <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
-                  Beta
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {imageFiles.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={() => setPreviewOpen(true)}
-                >
-                  <Eye className="h-3 w-3" />
-                  Ver archivos ({imageFiles.length})
-                </Button>
-              )}
-              {!version.es_activa && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  disabled={activating}
-                  onClick={handleActivate}
-                >
-                  {activating
-                    ? <Loader2 className="h-3 w-3 animate-spin" />
-                    : <CheckCircle className="h-3 w-3 mr-1" />}
-                  Activar
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => setExpanded(v => !v)}
-              >
-                <Upload className="h-3 w-3" />
-                {expanded ? 'Cerrar' : 'Subir archivos'}
-              </Button>
-            </div>
-          </div>
-
-          {version.notas_version && (
-            <CardDescription className="text-xs mt-1">{version.notas_version}</CardDescription>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-5xl p-2 bg-background/95 border-border/50">
+          {selectedPreview && (
+            <img
+              src={selectedPreview}
+              alt="Vista previa"
+              className="w-full max-h-[85vh] object-contain rounded-lg"
+            />
           )}
+        </DialogContent>
+      </Dialog>
 
-          <div className="flex items-center gap-3 mt-1">
-            <p className="text-xs text-muted-foreground">
-              {new Date(version.fecha_subida).toLocaleDateString('es-CO')}
-            </p>
-            {/* File badges */}
-            <div className="flex gap-1.5">
-              {Object.entries(FILE_TYPE_ICONS).map(([tipo, { icon: Icon, label }]) =>
-                filesByType[tipo] ? (
-                  <Badge key={tipo} variant="outline" className="text-xs gap-1 border-border/50 text-muted-foreground">
-                    <Icon className="h-3 w-3" />
-                    {label}
-                  </Badge>
-                ) : null
-              )}
-            </div>
-          </div>
-        </CardHeader>
-
-        {/* Upload zone */}
-        {expanded && (
-          <CardContent className="space-y-4 border-t border-border/40 pt-4">
-            <UploadZone
-              versionId={version.id}
-              projectId={projectId}
-              fileType="juego_webgl"
-              existingFile={webglFile}
-              onUploaded={onUploaded}
-              onDelete={setDeleteFile}
-            />
-            <UploadZone
-              versionId={version.id}
-              projectId={projectId}
-              fileType="portada"
-              existingFile={portadaFile}
-              onUploaded={onUploaded}
-              onDelete={setDeleteFile}
-            />
-            <UploadZone
-              versionId={version.id}
-              projectId={projectId}
-              fileType="captura"
-              existingFile={capturas[0]}
-              onUploaded={onUploaded}
-              onDelete={setDeleteFile}
-            />
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Preview modal */}
-      <FilePreviewModal
-        files={imageFiles}
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        onDelete={setDeleteFile}
-        projectId={projectId}
-        versionId={version.id}
-      />
-
-      {/* Permanent delete confirm */}
-      <AlertDialog open={!!deleteFile} onOpenChange={() => { setDeleteFile(null); setDeleteInput('') }}>
-        <AlertDialogContent>
+      {/* Delete confirm */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => { setDeleteConfirm(null); setDeleteInput('') }}>
+        <AlertDialogContent className="bg-background text-popover-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar archivo permanentemente</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción elimina el archivo del almacenamiento y no se puede deshacer.
-              Escribe <strong>eliminar</strong> para confirmar.
+              Esta acción no se puede deshacer. Escribe <strong>eliminar</strong> para confirmar.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input
@@ -544,7 +476,7 @@ function VersionCard({ version, projectId, onActivated, onUploaded }) {
             <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               disabled={deleteInput !== 'eliminar'}
-              onClick={handlePermanentDelete}
+              onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Eliminar permanentemente
@@ -552,7 +484,146 @@ function VersionCard({ version, projectId, onActivated, onUploaded }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
+  )
+}
+
+// ─── Version card ─────────────────────────────────────────────────────────────
+
+function VersionCard({ version: initialVersion, projectId, onActivated }) {
+  const [version, setVersion] = useState(initialVersion)
+  const [activating, setActivating] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  const handleFileAdded = (newFile) => {
+    setVersion(prev => {
+      const archivos = prev.archivos ?? []
+      if (newFile.tipo === 'portada' || newFile.tipo === 'juego_webgl') {
+        return {
+          ...prev,
+          archivos: [...archivos.filter(a => a.tipo !== newFile.tipo), newFile],
+        }
+      }
+      return { ...prev, archivos: [...archivos, newFile] }
+    })
+  }
+
+  const handleFileDeleted = (fileId) => {
+    setVersion(prev => ({
+      ...prev,
+      archivos: (prev.archivos ?? []).filter(a => a.id !== fileId),
+    }))
+  }
+
+  useEffect(() => { setVersion(initialVersion) }, [initialVersion])
+
+  const handleActivate = async () => {
+    setActivating(true)
+    try {
+      await studentService.activateVersion(projectId, version.id)
+      toast.success(`Versión ${version.numero_version} activada`)
+      onActivated()
+    } catch { toast.error('Error al activar versión') }
+    finally { setActivating(false) }
+  }
+
+  const filesByType = (version.archivos ?? []).reduce((acc, f) => {
+    if (!acc[f.tipo]) acc[f.tipo] = []
+    acc[f.tipo].push(f)
+    return acc
+  }, {})
+
+  const webglFiles = filesByType['juego_webgl'] ?? []
+  const portadaFiles = filesByType['portada'] ?? []
+  const capturaFiles = filesByType['captura'] ?? []
+
+  const FILE_BADGES = [
+    { tipo: 'juego_webgl', icon: FileArchive, label: 'WebGL', files: webglFiles },
+    { tipo: 'portada', icon: Image, label: 'Portada', files: portadaFiles },
+    { tipo: 'captura', icon: Camera, label: `${capturaFiles.length} captura${capturaFiles.length !== 1 ? 's' : ''}`, files: capturaFiles },
+  ]
+
+  return (
+    <Card className={`border-border/50 transition-colors ${version.es_activa ? 'bg-primary/5 border-primary/30' : 'bg-card/60'}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-sm font-mono">v{version.numero_version}</CardTitle>
+            {version.es_activa && (
+              <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Activa
+              </Badge>
+            )}
+            {version.numero_version.includes('beta') && (
+              <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-400 border-yellow-500/30">
+                Beta
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!version.es_activa && (
+              <Button variant="outline" size="sm" className="h-7 text-xs" disabled={activating} onClick={handleActivate}>
+                {activating ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3 mr-1" />}
+                Activar
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setExpanded(v => !v)}>
+              <Upload className="h-3 w-3" />
+              {expanded ? 'Cerrar archivos' : 'Gestionar archivos'}
+            </Button>
+          </div>
+        </div>
+
+        {version.notas_version && (
+          <CardDescription className="text-xs mt-1">{version.notas_version}</CardDescription>
+        )}
+
+        <div className="flex items-center gap-3 mt-1 flex-wrap">
+          <p className="text-xs text-muted-foreground">
+            {new Date(version.fecha_subida).toLocaleDateString('es-CO')}
+          </p>
+          <div className="flex gap-1.5 flex-wrap">
+            {FILE_BADGES.filter(b => b.files.length > 0).map(b => (
+              <Badge key={b.tipo} variant="outline" className="text-xs gap-1 border-border/50 text-muted-foreground">
+                <b.icon className="h-3 w-3" />
+                {b.label}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+
+      {expanded && (
+        <CardContent className="space-y-5 border-t border-border/40 pt-4">
+          <UploadZone
+            versionId={version.id}
+            projectId={projectId}
+            fileType="juego_webgl"
+            existingFiles={webglFiles}
+            onFileAdded={handleFileAdded}
+            onFileDeleted={handleFileDeleted}
+          />
+          <UploadZone
+            versionId={version.id}
+            projectId={projectId}
+            fileType="portada"
+            existingFiles={portadaFiles}
+            onFileAdded={handleFileAdded}
+            onFileDeleted={handleFileDeleted}
+          />
+          <UploadZone
+            versionId={version.id}
+            projectId={projectId}
+            fileType="captura"
+            existingFiles={capturaFiles}
+            onFileAdded={handleFileAdded}
+            onFileDeleted={handleFileDeleted}
+          />
+        </CardContent>
+      )}
+    </Card>
   )
 }
 
@@ -560,13 +631,13 @@ function VersionCard({ version, projectId, onActivated, onUploaded }) {
 
 export default function ProjectVersionsTab({ projectId }) {
   const [versions, setVersions] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [bumpType, setBumpType] = useState('minor')
-  const [isBeta, setIsBeta]     = useState(false)
+  const [isBeta, setIsBeta] = useState(false)
   const [customVersion, setCustomVersion] = useState('')
-  const [versionError, setVersionError]   = useState('')
+  const [versionError, setVersionError] = useState('')
 
   const { register, handleSubmit, reset } = useForm()
 
@@ -620,7 +691,7 @@ export default function ProjectVersionsTab({ projectId }) {
     try {
       await studentService.createVersion(projectId, {
         numero_version: finalVersion,
-        notas_version:  data.notas_version || null,
+        notas_version: data.notas_version || null,
       })
       toast.success(`Versión ${finalVersion} creada`)
       reset()
@@ -680,11 +751,10 @@ export default function ProjectVersionsTab({ projectId }) {
                       key={opt.value}
                       type="button"
                       onClick={() => { setBumpType(opt.value); setCustomVersion(''); setVersionError('') }}
-                      className={`rounded-lg border px-3 py-2 text-left text-xs transition-all ${
-                        bumpType === opt.value && !customVersion
-                          ? 'border-primary bg-primary/10 text-foreground'
-                          : 'border-border/50 text-muted-foreground hover:border-border'
-                      }`}
+                      className={`rounded-lg border px-3 py-2 text-left text-xs transition-all ${bumpType === opt.value && !customVersion
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border/50 text-muted-foreground hover:border-border'
+                        }`}
                     >
                       <p className="font-medium">{opt.label}</p>
                       <p className="text-muted-foreground">{opt.desc}</p>
@@ -693,11 +763,10 @@ export default function ProjectVersionsTab({ projectId }) {
                   <button
                     type="button"
                     onClick={() => { setIsBeta(v => !v); setCustomVersion(''); setVersionError('') }}
-                    className={`rounded-lg border px-3 py-2 text-left text-xs transition-all ${
-                      isBeta
-                        ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400'
-                        : 'border-border/50 text-muted-foreground hover:border-border'
-                    }`}
+                    className={`rounded-lg border px-3 py-2 text-left text-xs transition-all ${isBeta
+                      ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-400'
+                      : 'border-border/50 text-muted-foreground hover:border-border'
+                      }`}
                   >
                     <p className="font-medium">Beta</p>
                     <p className={isBeta ? 'text-yellow-400/70' : 'text-muted-foreground'}>Marcar como beta</p>

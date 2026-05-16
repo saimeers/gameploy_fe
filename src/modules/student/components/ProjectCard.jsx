@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ExternalLink, MoreHorizontal, Pencil, Trash2, Globe, Lock, Link2 } from 'lucide-react'
+import { ExternalLink, MoreHorizontal, Pencil, Trash2, Globe, Lock, Link2, Eye } from 'lucide-react'
 import { Badge }  from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -7,6 +7,9 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { useState } from 'react'
+import { useEffect } from 'react'
+import { studentService } from '../services/student.service'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -21,18 +24,45 @@ const VISIBILITY_ICON = {
 }
 
 export default function ProjectCard({ project, onDelete }) {
+  const [portadaUrl, setPortadaUrl] = useState(null)
+  const portadaFile = project.versiones?.[0]?.archivos?.[0]
+
+  useEffect(() => {
+    if (!portadaFile?.ruta_storage) return
+    studentService.getFileUrl(portadaFile.ruta_storage)
+      .then(res => setPortadaUrl(res.data.data.url))
+      .catch(() => {})
+  }, [portadaFile])
+
   const statusCfg = STATUS_CFG[project.estado] ?? { label: project.estado, class: '' }
   const VisIcon   = VISIBILITY_ICON[project.visibilidad] ?? Lock
+  const visitas   = project._count?.visitas ?? 0
 
   return (
     <Card className="border-border/50 bg-card/60 flex flex-col hover:border-border/80 transition-colors">
-      {/* Portada placeholder */}
-      <div className="h-36 rounded-t-lg bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center">
-        <span className="text-3xl font-bold text-primary/30">
-          {project.nombre.charAt(0).toUpperCase()}
-        </span>
+      {/* Portada */}
+      <div className="h-36 rounded-t-lg overflow-hidden bg-gradient-to-br from-primary/10 to-accent/20 flex items-center justify-center relative">
+        {portadaUrl ? (
+          <img
+            src={portadaUrl}
+            alt={project.nombre}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span className="text-3xl font-bold text-primary/30">
+            {project.nombre.charAt(0).toUpperCase()}
+          </span>
+        )}
+        {/* Visitas badge */}
+        {visitas > 0 && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-background/70 backdrop-blur-sm px-2 py-0.5 text-xs text-muted-foreground">
+            <Eye className="h-3 w-3" />
+            {visitas}
+          </div>
+        )}
       </div>
 
+      {/* resto del card igual */}
       <CardHeader className="pb-2 pt-3 px-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -93,10 +123,7 @@ export default function ProjectCard({ project, onDelete }) {
           <VisIcon className="h-3 w-3" />
           <span className="capitalize">{project.visibilidad?.replace('_', ' ')}</span>
         </div>
-        <Link
-          to={`/student/projects/${project.id}`}
-          className="text-xs text-primary hover:underline"
-        >
+        <Link to={`/student/projects/${project.id}`} className="text-xs text-primary hover:underline">
           Gestionar →
         </Link>
       </CardFooter>

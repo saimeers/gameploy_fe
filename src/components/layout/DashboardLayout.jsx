@@ -3,15 +3,16 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Separator } from '@/components/ui/separator'
 import { AppSidebar } from './AppSidebar'
 
-// Map path → breadcrumb label
 const breadcrumbMap = {
     '/student': 'Mis proyectos',
     '/student/new': 'Nuevo proyecto',
-    '/teacher': 'Explorar proyectos',
+    '/teacher': 'Inicio',
+    '/teacher/explore': 'Explorar juegos',
     '/teacher/evaluations': 'Mis evaluaciones',
     '/admin': 'Dashboard',
     '/admin/users': 'Usuarios',
     '/admin/projects': 'Proyectos',
+    '/admin/catalog': 'Catálogo',
 }
 
 export default function DashboardLayout() {

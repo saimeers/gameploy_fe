@@ -252,7 +252,7 @@ export default function ProjectControlsTab({ projectId }) {
       )}
 
       <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-background text-popover-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar control</AlertDialogTitle>
             <AlertDialogDescription>

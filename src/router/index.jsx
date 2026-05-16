@@ -1,46 +1,49 @@
 import { createBrowserRouter } from 'react-router-dom'
-import HomePage             from '@/pages/HomePage'
-import LoginPage            from '@/modules/auth/pages/LoginPage'
-import RegisterPage         from '@/modules/auth/pages/RegisterPage'
-import ForgotPasswordPage   from '@/modules/auth/pages/ForgotPasswordPage'
-import ResetPasswordPage    from '@/modules/auth/pages/ResetPasswordPage'
-import PendingPage          from '@/pages/PendingPage'
-import DashboardLayout      from '@/components/layout/DashboardLayout'
-import ProtectedRoute       from '@/components/ProtectedRoute'
-import ErrorPage            from '@/components/ErrorPage'
-import GamePage         from '@/pages/GamePage'
+import HomePage from '@/pages/HomePage'
+import LoginPage from '@/modules/auth/pages/LoginPage'
+import RegisterPage from '@/modules/auth/pages/RegisterPage'
+import ForgotPasswordPage from '@/modules/auth/pages/ForgotPasswordPage'
+import ResetPasswordPage from '@/modules/auth/pages/ResetPasswordPage'
+import PendingPage from '@/pages/PendingPage'
+import DashboardLayout from '@/components/layout/DashboardLayout'
+import ProtectedRoute from '@/components/ProtectedRoute'
+import ErrorPage from '@/components/ErrorPage'
+import GamePage from '@/pages/GamePage'
+import GamesListPage from '@/pages/GamesListPage'
 
 // Student
-import StudentDashboard     from '@/modules/student/pages/StudentDashboard'
-import NewProjectPage     from '@/modules/student/pages/NewProjectPage'
-import ProjectDetailPage  from '@/modules/student/pages/ProjectDetailPage'
+import StudentDashboard from '@/modules/student/pages/StudentDashboard'
+import NewProjectPage from '@/modules/student/pages/NewProjectPage'
+import ProjectDetailPage from '@/modules/student/pages/ProjectDetailPage'
 
 // Teacher
-import TeacherDashboard     from '@/modules/teacher/pages/TeacherDashboard'
-import ExplorePage          from '@/modules/teacher/pages/ExplorePage'
+import TeacherDashboard from '@/modules/teacher/pages/TeacherDashboard'
+import ExplorePage from '@/modules/teacher/pages/ExplorePage'
+import EvaluationsPage from '@/modules/teacher/pages/EvaluationsPage'
 
 // Admin
-import AdminDashboard       from '@/modules/admin/pages/AdminDashboard'
-import UsersPage            from '@/modules/admin/pages/UsersPage'
-import ProjectsAdminPage    from '@/modules/admin/pages/ProjectsAdminPage'
+import AdminDashboard from '@/modules/admin/pages/AdminDashboard'
+import UsersPage from '@/modules/admin/pages/UsersPage'
+import ProjectsAdminPage from '@/modules/admin/pages/ProjectsAdminPage'
 import CatalogAdminPage from '@/modules/admin/pages/CatalogAdminPage'
 
 export const router = createBrowserRouter([
-  { path: '/',                 element: <HomePage /> },
-  { path: '/login',            element: <LoginPage /> },
-  { path: '/register',         element: <RegisterPage /> },
-  { path: '/forgot-password',  element: <ForgotPasswordPage /> },
-  { path: '/reset-password',   element: <ResetPasswordPage /> },
-  { path: '/pending',          element: <PendingPage /> },
+  { path: '/', element: <HomePage /> },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
+  { path: '/pending', element: <PendingPage /> },
   { path: '/games/:slug', element: <GamePage /> },
+  { path: '/games', element: <GamesListPage /> },
 
   // Student
   {
     element: <ProtectedRoute allowedRoles={['estudiante']}><DashboardLayout /></ProtectedRoute>,
     children: [
-      { path: '/student',                   element: <StudentDashboard /> },
-      { path: '/student/new',               element: <NewProjectPage /> },
-      { path: '/student/projects/:id',      element: <ProjectDetailPage /> },
+      { path: '/student', element: <StudentDashboard /> },
+      { path: '/student/new', element: <NewProjectPage /> },
+      { path: '/student/projects/:id', element: <ProjectDetailPage /> },
     ],
   },
 
@@ -48,8 +51,9 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute allowedRoles={['docente']}><DashboardLayout /></ProtectedRoute>,
     children: [
-      { path: '/teacher',              element: <TeacherDashboard /> },
-      { path: '/teacher/evaluations',  element: <ExplorePage /> },
+      { path: '/teacher', element: <TeacherDashboard /> },
+      { path: '/teacher/explore',      element: <ExplorePage /> },
+      { path: '/teacher/evaluations',  element: <EvaluationsPage /> },
     ],
   },
 
@@ -57,16 +61,16 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute allowedRoles={['admin']}><DashboardLayout /></ProtectedRoute>,
     children: [
-      { path: '/admin',          element: <AdminDashboard /> },
-      { path: '/admin/users',    element: <UsersPage /> },
+      { path: '/admin', element: <AdminDashboard /> },
+      { path: '/admin/users', element: <UsersPage /> },
       { path: '/admin/projects', element: <ProjectsAdminPage /> },
       { path: '/admin/catalog', element: <CatalogAdminPage /> },
     ],
   },
 
   // Error
-  { 
-    path: '*', 
-    element: <ErrorPage /> 
+  {
+    path: '*',
+    element: <ErrorPage />
   }
 ])
