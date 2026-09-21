@@ -22,6 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { studentService } from '../../services/student.service'
+import { LIMITS }         from '@/lib/limits'
 import api from '@/services/api'
 
 // ─── Semantic version helpers ─────────────────────────────────────────────────
@@ -214,6 +215,7 @@ function FilePreviewModal({ files, open, onClose, onDelete, projectId, versionId
           <Input
             className="mt-2"
             placeholder="eliminar"
+            maxLength={LIMITS.confirmacion}
             value={deleteInput}
             onChange={e => setDeleteInput(e.target.value)}
           />
@@ -469,6 +471,7 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
           <Input
             className="mt-2"
             placeholder="eliminar"
+            maxLength={LIMITS.confirmacion}
             value={deleteInput}
             onChange={e => setDeleteInput(e.target.value)}
           />
@@ -785,6 +788,7 @@ export default function ProjectVersionsTab({ projectId }) {
                 <Input
                   className="font-mono"
                   placeholder={previewVersion}
+                  maxLength={LIMITS.numeroVersion}
                   value={customVersion}
                   onChange={e => validateAndSetVersion(e.target.value)}
                 />
@@ -800,6 +804,7 @@ export default function ProjectVersionsTab({ projectId }) {
                 <Label className="text-xs">Notas de cambios</Label>
                 <Input
                   placeholder="¿Qué cambió en esta versión?"
+                  maxLength={LIMITS.notasVersion}
                   {...register('notas_version')}
                 />
               </div>

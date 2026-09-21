@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { adminService } from '../services/admin.service'
+import { LIMITS }       from '@/lib/limits'
 
 const ROLE_LABELS = {
   admin: { label: 'Admin', class: 'bg-primary/20 text-primary border-primary/30' },
@@ -119,6 +120,7 @@ export default function UsersPage() {
           <Input
             placeholder="Buscar por nombre o correo..."
             className="pl-9"
+            maxLength={LIMITS.busqueda}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -171,7 +173,7 @@ export default function UsersPage() {
                 <TableRow key={user.id} className="hover:bg-accent/20">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-7 w-7 rounded-md">
+                      <Avatar className="h-7 w-7">
                         {user.foto_perfil ? (
                           <img
                             src={user.foto_perfil}
@@ -179,7 +181,7 @@ export default function UsersPage() {
                             className="h-full w-full object-cover rounded-md"
                           />
                         ) : (
-                          <AvatarFallback className="rounded-md bg-primary/20 text-primary text-xs">
+                          <AvatarFallback className="bg-primary/20 text-primary text-xs">
                             {user.nombre
                               .split(' ')
                               .map(n => n[0])

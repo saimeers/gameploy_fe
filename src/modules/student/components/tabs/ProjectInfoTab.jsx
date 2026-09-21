@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { studentService } from '../../services/student.service'
+import { LIMITS }         from '@/lib/limits'
 
 const VISIBILITY_OPTIONS = [
   { value: 'privado',    label: 'Privado — solo tú' },
@@ -26,7 +27,7 @@ export default function ProjectInfoTab({ project, onUpdated }) {
     project.etiquetas?.map(pe => pe.id_etiqueta) ?? []
   )
 
-  const { register, handleSubmit, setValue, formState: { isDirty } } = useForm({
+  const { register, handleSubmit, setValue, watch, formState: { isDirty } } = useForm({
     defaultValues: {
       nombre:        project.nombre,
       descripcion:   project.descripcion ?? '',
@@ -75,12 +76,24 @@ export default function ProjectInfoTab({ project, onUpdated }) {
 
           <div className="space-y-1.5">
             <Label>Nombre</Label>
-            <Input {...register('nombre', { required: true })} disabled={loading} />
+            <Input
+              maxLength={LIMITS.nombreProyecto}
+              {...register('nombre', { required: true })}
+              disabled={loading}
+            />
           </div>
 
           <div className="space-y-1.5">
             <Label>Descripción</Label>
-            <Textarea rows={3} {...register('descripcion')} disabled={loading} />
+            <Textarea
+              rows={3}
+              maxLength={LIMITS.descripcionProyecto}
+              {...register('descripcion')}
+              disabled={loading}
+            />
+            <p className="text-xs text-muted-foreground text-right">
+              {(watch('descripcion') || '').length} / {LIMITS.descripcionProyecto}
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -88,9 +101,13 @@ export default function ProjectInfoTab({ project, onUpdated }) {
             <Textarea
               rows={3}
               placeholder="¿Cómo se juega? ¿Qué debe hacer el usuario?"
+              maxLength={LIMITS.instruccionesProyecto}
               {...register('instrucciones')}
               disabled={loading}
             />
+            <p className="text-xs text-muted-foreground text-right">
+              {(watch('instrucciones') || '').length} / {LIMITS.instruccionesProyecto}
+            </p>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">

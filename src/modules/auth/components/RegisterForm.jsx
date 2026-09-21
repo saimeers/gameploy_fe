@@ -7,6 +7,7 @@ import { Input }    from '@/components/ui/input'
 import { Label }    from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn }       from '@/lib/utils'
+import { LIMITS }   from '@/lib/limits'
 import { useAuth }  from '../hooks/useAuth'
 
 const ROLES = [
@@ -99,6 +100,7 @@ export default function RegisterForm() {
               <Input
                 id="nombre"
                 placeholder="Tu nombre"
+                maxLength={LIMITS.nombreUsuario}
                 disabled={loading || !!googleData}
                 {...register('nombre', { required: 'El nombre es requerido' })}
               />
@@ -112,6 +114,7 @@ export default function RegisterForm() {
                 id="correo"
                 type="email"
                 placeholder="tu@correo.com"
+                maxLength={LIMITS.correo}
                 disabled={loading || !!googleData}
                 {...register('correo', {
                   required: 'El correo es requerido',
@@ -135,6 +138,7 @@ export default function RegisterForm() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  maxLength={LIMITS.password}
                   disabled={loading}
                   className="pr-10"
                   {...register('password', {
@@ -161,6 +165,7 @@ export default function RegisterForm() {
                 <Input
                   id="confirmPassword"
                   type={showConfirm ? 'text' : 'password'}
+                  maxLength={LIMITS.password}
                   disabled={loading}
                   className="pr-10"
                   {...register('confirmPassword', {

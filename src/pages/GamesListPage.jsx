@@ -11,6 +11,7 @@ import {
 import { useTheme }  from '@/components/ThemeProvider'
 import Navbar        from '@/pages/home/Navbar'
 import api           from '@/services/api'
+import { LIMITS }    from '@/lib/limits'
 
 function GameCard({ project }) {
   const portadaFile = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')
@@ -133,6 +134,7 @@ export default function GamesListPage() {
             <Input
               placeholder="Buscar juegos..."
               className="pl-9"
+              maxLength={LIMITS.busqueda}
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
             />

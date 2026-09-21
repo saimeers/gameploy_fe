@@ -5,6 +5,7 @@ import { toast }    from 'sonner'
 import { ArrowLeft, Loader2, MailCheck } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
+import { LIMITS }   from '@/lib/limits'
 import { Label }    from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import api          from '@/services/api'
@@ -82,6 +83,7 @@ export default function ForgotPasswordPage() {
                     id="correo"
                     type="email"
                     placeholder="tu@correo.com"
+                    maxLength={LIMITS.correo}
                     disabled={loading}
                     {...register('correo', {
                       required: 'El correo es requerido',

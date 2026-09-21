@@ -22,6 +22,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { adminService } from '../services/admin.service'
+import { LIMITS }       from '@/lib/limits'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -98,6 +99,7 @@ export default function ProjectsAdminPage() {
           <Input
             placeholder="Buscar por nombre o estudiante..."
             className="pl-9"
+            maxLength={LIMITS.busqueda}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />

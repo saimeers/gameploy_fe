@@ -15,6 +15,7 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import api from '@/services/api'
+import { LIMITS } from '@/lib/limits'
 
 function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, deleteFn }) {
     const [items, setItems] = useState([])
@@ -146,6 +147,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                         <div className="space-y-1.5">
                             <Label>Nombre *</Label>
                             <Input
+                                maxLength={LIMITS.nombreCatalogo}
                                 {...register('nombre', { required: 'El nombre es requerido' })}
                                 disabled={saving}
                             />
@@ -154,7 +156,11 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                         {type !== 'etiqueta' && (
                             <div className="space-y-1.5">
                                 <Label>Descripción</Label>
-                                <Input {...register('descripcion')} disabled={saving} />
+                                <Input
+                                    maxLength={LIMITS.descripcionCatalogo}
+                                    {...register('descripcion')}
+                                    disabled={saving}
+                                />
                             </div>
                         )}
                         <DialogFooter>

@@ -7,6 +7,7 @@ import { firebaseApp }       from '@/lib/firebase'
 import { ArrowLeft, Loader2, Eye, EyeOff } from 'lucide-react'
 import { Button }            from '@/components/ui/button'
 import { Input }             from '@/components/ui/input'
+import { LIMITS }            from '@/lib/limits'
 import { Label }             from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -98,6 +99,7 @@ export default function ResetPasswordPage() {
                     <Input
                       id="password"
                       type={showPass ? 'text' : 'password'}
+                      maxLength={LIMITS.password}
                       disabled={loading}
                       className="pr-10"
                       {...register('password', {
@@ -124,6 +126,7 @@ export default function ResetPasswordPage() {
                     <Input
                       id="confirmPassword"
                       type={showConfirm ? 'text' : 'password'}
+                      maxLength={LIMITS.password}
                       disabled={loading}
                       className="pr-10"
                       {...register('confirmPassword', {

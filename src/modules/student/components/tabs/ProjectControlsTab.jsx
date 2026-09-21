@@ -13,6 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { studentService } from '../../services/student.service'
+import { LIMITS }         from '@/lib/limits'
 
 // Predefined keys/buttons per input type
 const KEYS_BY_TYPE = {
@@ -188,6 +189,7 @@ export default function ProjectControlsTab({ projectId }) {
               <input
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 placeholder="Ej: Mover hacia arriba"
+                maxLength={LIMITS.accionControl}
                 value={accion}
                 onChange={e => setAccion(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}

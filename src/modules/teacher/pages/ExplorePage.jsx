@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label }    from '@/components/ui/label'
 import { toast }    from 'sonner'
 import { teacherService } from '../services/teacher.service'
+import { LIMITS }         from '@/lib/limits'
 
 function StarRating({ value, onChange }) {
   const [hovered, setHovered] = useState(0)
@@ -186,6 +187,7 @@ export default function ExplorePage() {
           <Input
             placeholder="Buscar juegos..."
             className="pl-9"
+            maxLength={LIMITS.busqueda}
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1) }}
           />
@@ -258,10 +260,13 @@ export default function ExplorePage() {
               <Textarea
                 rows={4}
                 placeholder="Describe tu experiencia con el juego, aspectos pedagógicos, usabilidad, sugerencias de mejora..."
+                maxLength={LIMITS.comentario}
                 value={contenido}
                 onChange={e => setContenido(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground text-right">{contenido.length} caracteres</p>
+              <p className="text-xs text-muted-foreground text-right">
+                {contenido.length} / {LIMITS.comentario} caracteres
+              </p>
             </div>
           </div>
 
