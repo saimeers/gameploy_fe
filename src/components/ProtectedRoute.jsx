@@ -6,6 +6,10 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
   if (!token || !user) return <Navigate to="/login" replace />
 
+  // Red de seguridad: si desactivan la cuenta con la sesión abierta, el backend
+  // responde 401 y el interceptor la limpia, pero mientras tanto no se entra.
+  if (user.activo === false) return <Navigate to="/login" replace />
+
   if (user.rol?.nombre === 'pendiente') {
     return <Navigate to="/pending" replace />
   }

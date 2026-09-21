@@ -14,16 +14,40 @@ export function useAuth() {
   const setAuth   = useAuthStore(s => s.setAuth)
   const clearAuth = useAuthStore(s => s.clearAuth)
 
+  /**
+   * Cuenta que no puede entrar: avisa, cierra la sesión de Firebase y deja el
+   * estado limpio, para que no quede una sesión a medias.
+   */
+  const denyAccess = async (notify) => {
+    notify()
+    await authService.logout()
+    clearAuth()
+  }
+
+  /** Motivo por el que una cuenta no puede entrar, o null si sí puede. */
+  const accessDenial = (user) => {
+    if (user.activo === false) {
+      return () => toast.error('Tu cuenta ha sido deshabilitada', {
+        description: 'Contacta al administrador del semillero.',
+      })
+    }
+    if (user.rol?.nombre === 'pendiente') {
+      return () => toast.warning('Cuenta en revisión', {
+        description: 'Tu cuenta está pendiente de aprobación por un administrador.',
+      })
+    }
+    return null
+  }
+
   const loginWithEmail = async (correo, password) => {
     setLoading(true)
     try {
       const { token, user } = await authService.loginWithEmail(correo, password)
       const photoURL = auth.currentUser?.photoURL ?? null
 
-      if (user.rol?.nombre === 'pendiente') {
-        toast.warning('Cuenta en revisión', {
-          description: 'Tu cuenta está pendiente de aprobación por un administrador.',
-        })
+      const denial = accessDenial(user)
+      if (denial) {
+        await denyAccess(denial)
         return
       }
 
@@ -54,10 +78,9 @@ export function useAuth() {
       const { token, user } = result
       const photoURL = auth.currentUser?.photoURL ?? null
 
-      if (user.rol?.nombre === 'pendiente') {
-        toast.warning('Cuenta en revisión', {
-          description: 'Tu cuenta está pendiente de aprobación por un administrador.',
-        })
+      const denial = accessDenial(user)
+      if (denial) {
+        await denyAccess(denial)
         return
       }
 
