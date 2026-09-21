@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   Plus, CheckCircle, Upload, FileArchive, Image, Camera,
-  Loader2, FolderOpen, Download, Trash2, Eye, EyeOff, X, Expand
+  Loader2, FolderOpen, Download, Trash2, Eye, EyeOff, X, Expand, Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,13 @@ import {
 import { studentService } from '../../services/student.service'
 import { LIMITS }         from '@/lib/limits'
 import api from '@/services/api'
+
+/** Etiqueta e icono de cada tipo de archivo en la lista de herencia. */
+const INHERIT_FILE_CFG = {
+  juego_webgl: { label: 'Juego WebGL', icon: FileArchive },
+  portada:     { label: 'Portada',     icon: Image },
+  captura:     { label: 'Captura',     icon: Camera },
+}
 
 // ─── Semantic version helpers ─────────────────────────────────────────────────
 
@@ -641,6 +648,8 @@ export default function ProjectVersionsTab({ projectId }) {
   const [isBeta, setIsBeta] = useState(false)
   const [customVersion, setCustomVersion] = useState('')
   const [versionError, setVersionError] = useState('')
+  // Ids de los archivos de la versión activa que la nueva versión conservará
+  const [keepFiles, setKeepFiles] = useState([])
 
   const { register, handleSubmit, reset } = useForm()
 
@@ -657,6 +666,24 @@ export default function ProjectVersionsTab({ projectId }) {
 
   // Latest published version (first in list after ordering by date desc)
   const latestVersion = versions[0]?.numero_version
+
+  // Archivos que la nueva versión puede heredar de la activa
+  const inheritable = versions.find(v => v.es_activa)?.archivos ?? []
+
+  const toggleForm = () => {
+    setShowForm(open => {
+      if (!open) setKeepFiles(inheritable.map(a => a.id))
+      return !open
+    })
+    setCustomVersion('')
+    setVersionError('')
+  }
+
+  const toggleKeepFile = (fileId) => {
+    setKeepFiles(prev =>
+      prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
+    )
+  }
 
   // Auto-suggest version
   const suggested = suggestNext(latestVersion, bumpType)
@@ -695,6 +722,7 @@ export default function ProjectVersionsTab({ projectId }) {
       await studentService.createVersion(projectId, {
         numero_version: finalVersion,
         notas_version: data.notas_version || null,
+        heredar: keepFiles,
       })
       toast.success(`Versión ${finalVersion} creada`)
       reset()
@@ -722,7 +750,7 @@ export default function ProjectVersionsTab({ projectId }) {
           size="sm"
           variant={showForm ? 'outline' : 'default'}
           className="gap-2"
-          onClick={() => { setShowForm(v => !v); setCustomVersion(''); setVersionError('') }}
+          onClick={toggleForm}
         >
           <Plus className="h-4 w-4" />
           {showForm ? 'Cancelar' : 'Nueva versión'}
@@ -808,6 +836,49 @@ export default function ProjectVersionsTab({ projectId }) {
                   {...register('notas_version')}
                 />
               </div>
+
+              {/* Archivos que se conservan de la versión activa */}
+              {inheritable.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Archivos que conservas</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Desmarca los que vayas a reemplazar: esos tendrás que subirlos de nuevo
+                    en la versión nueva. Los marcados se mantienen sin volver a subirlos.
+                  </p>
+                  <div className="space-y-1.5 pt-1">
+                    {inheritable.map(archivo => {
+                      const cfg = INHERIT_FILE_CFG[archivo.tipo] ?? { label: archivo.tipo, icon: FileArchive }
+                      const Icon = cfg.icon
+                      const keep = keepFiles.includes(archivo.id)
+                      return (
+                        <button
+                          key={archivo.id}
+                          type="button"
+                          onClick={() => toggleKeepFile(archivo.id)}
+                          className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
+                            keep
+                              ? 'border-primary/50 bg-primary/10'
+                              : 'border-border/40 bg-background/40 opacity-60'
+                          }`}
+                        >
+                          <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                            keep ? 'border-primary bg-primary text-primary-foreground' : 'border-border'
+                          }`}>
+                            {keep && <Check className="h-3 w-3" />}
+                          </span>
+                          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs">{archivo.nombre_archivo}</span>
+                            <span className="block text-[10px] text-muted-foreground">
+                              {cfg.label} · {keep ? 'se conserva' : 'lo subirás de nuevo'}
+                            </span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <Button type="submit" size="sm" disabled={creating || !!versionError}>
