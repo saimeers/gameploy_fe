@@ -27,16 +27,21 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
 
     const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm()
 
-    const fetch = useCallback(async () => {
-        setLoading(true)
-        try {
-            const res = await fetchFn()
-            setItems(res.data.data)
-        } catch { toast.error(`Error al cargar ${label}`) }
-        finally { setLoading(false) }
-    }, [fetchFn, label])
+    const load = useCallback(() => fetchFn().then(res => res.data.data), [fetchFn])
 
-    useEffect(() => { fetch() }, [fetch])
+    useEffect(() => {
+        let cancelled = false
+        load()
+            .then(data => { if (!cancelled) setItems(data) })
+            .catch(() => { if (!cancelled) toast.error(`Error al cargar ${label}`) })
+            .finally(() => { if (!cancelled) setLoading(false) })
+        return () => { cancelled = true }
+    }, [load, label])
+
+    const refresh = async () => {
+        try { setItems(await load()) }
+        catch { toast.error(`Error al cargar ${label}`) }
+    }
 
     const openCreate = () => {
         reset(type !== 'etiqueta'
@@ -65,7 +70,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                 toast.success(`${label} actualizada`)
             }
             setDialog(null)
-            fetch()
+            refresh()
         } catch (err) {
             toast.error(err.response?.data?.message ?? 'Error al guardar')
         } finally { setSaving(false) }
@@ -76,7 +81,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
         try {
             await deleteFn(toDelete.id)
             toast.success(`${label} eliminada`)
-            fetch()
+            refresh()
         } catch (err) {
             toast.error(err.response?.data?.message ?? 'No se puede eliminar, puede estar en uso')
         } finally {

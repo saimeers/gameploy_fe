@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-
-const ThemeProviderContext = createContext({ theme: 'dark', setTheme: () => null })
+import { useEffect, useState } from 'react'
+import { ThemeProviderContext } from './theme-context'
 
 export function ThemeProvider({ children, defaultTheme = 'dark', storageKey = 'gameploy-theme', ...props }) {
   const [theme, setTheme] = useState(() => localStorage.getItem(storageKey) || defaultTheme)
@@ -24,10 +23,4 @@ export function ThemeProvider({ children, defaultTheme = 'dark', storageKey = 'g
       {children}
     </ThemeProviderContext.Provider>
   )
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext)
-  if (context === undefined) throw new Error('useTheme must be used within a ThemeProvider')
-  return context
 }

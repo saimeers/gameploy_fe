@@ -131,20 +131,35 @@ export default function ExplorePage() {
     teacherService.getCategorias().then(r => setCategorias(r.data.data)).catch(() => {})
   }, [])
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { page, limit }
-      if (search)              params.q         = search
-      if (categoria !== 'all') params.categoria = categoria
-      const res = await teacherService.getPublicGames(params)
-      setProjects(res.data.data)
-      setTotal(res.data.meta?.total ?? 0)
-    } catch { toast.error('Error al cargar juegos') }
-    finally { setLoading(false) }
+  const loadProjects = useCallback(() => {
+    const params = { page, limit }
+    if (search)              params.q         = search
+    if (categoria !== 'all') params.categoria = categoria
+    return teacherService.getPublicGames(params).then(res => res.data)
   }, [search, categoria, page])
 
-  useEffect(() => { fetchProjects() }, [fetchProjects])
+  useEffect(() => {
+    let cancelled = false
+    loadProjects()
+      .then(body => {
+        if (cancelled) return
+        setProjects(body.data)
+        setTotal(body.meta?.total ?? 0)
+      })
+      .catch(() => { if (!cancelled) toast.error('Error al cargar juegos') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadProjects])
+
+  const refreshProjects = async () => {
+    try {
+      const body = await loadProjects()
+      setProjects(body.data)
+      setTotal(body.meta?.total ?? 0)
+    } catch {
+      toast.error('Error al cargar juegos')
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => { setPage(1) }, 400)
@@ -165,7 +180,7 @@ export default function ExplorePage() {
       setEvaluateProject(null)
       setCalificacion(0)
       setContenido('')
-      fetchProjects()
+      refreshProjects()
     } catch (err) {
       toast.error(err.response?.data?.message ?? 'Error al enviar evaluación')
     } finally { setSubmitting(false) }

@@ -19,26 +19,34 @@ export default function StudentDashboard() {
   const [toDelete, setToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true)
+  const loadProjects = useCallback(
+    () => studentService.getMyProjects({ limit: 50 }).then(res => res.data.data),
+    []
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    loadProjects()
+      .then(data => { if (!cancelled) setProjects(data) })
+      .catch(() => { if (!cancelled) toast.error('Error al cargar proyectos') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadProjects])
+
+  const refreshProjects = async () => {
     try {
-      const res = await studentService.getMyProjects({ limit: 50 })
-      setProjects(res.data.data)
+      setProjects(await loadProjects())
     } catch {
       toast.error('Error al cargar proyectos')
-    } finally {
-      setLoading(false)
     }
-  }, [])
-
-  useEffect(() => { fetchProjects() }, [fetchProjects])
+  }
 
   const handleDelete = async () => {
     setDeleting(true)
     try {
       await studentService.deleteProject(toDelete.id)
       toast.success('Proyecto eliminado')
-      fetchProjects()
+      refreshProjects()
     } catch {
       toast.error('Error al eliminar el proyecto')
     } finally {

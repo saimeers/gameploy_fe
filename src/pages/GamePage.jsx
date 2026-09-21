@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
-import { useParams, Navigate, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import Navbar from '@/pages/home/Navbar'
-import { useTheme } from '@/components/ThemeProvider'
+import { useTheme } from '@/components/theme-context'
 import {
     Loader2, Gamepad2, User, Calendar, Tag,
-    Globe, Link2, ExternalLink, Star,
+    Star,
     Eye,
 } from 'lucide-react'
 import {
@@ -20,28 +20,11 @@ import api from '@/services/api'
 import ControlsViewer from '@/components/controls/ControlsViewer'
 
 function GamePlayer({ archivos, projectName, projectId, versionId }) {
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
     const [started, setStarted] = useState(false)
 
-    useEffect(() => {
-        const webglFile = archivos?.find(f => f.tipo === 'juego_webgl')
-
-        if (!webglFile) {
-            setError('No hay archivos del juego disponibles.')
-        }
-
-        setLoading(false)
-    }, [archivos])
-
-    if (loading) return (
-        <div className="flex items-center justify-center h-[500px] rounded-xl border border-border/50 bg-card/40">
-            <div className="text-center space-y-2">
-                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                <p className="text-sm text-muted-foreground">Cargando juego...</p>
-            </div>
-        </div>
-    )
+    // Se deriva de las props en el render: no hace falta estado ni efecto.
+    const webglFile = archivos?.find(f => f.tipo === 'juego_webgl')
+    const error = webglFile ? null : 'No hay archivos del juego disponibles.'
 
     if (error) return (
         <div className="flex items-center justify-center h-64 rounded-xl border border-border/50 bg-card/40">
@@ -121,7 +104,7 @@ export default function GamePage() {
             try {
                 const res = await api.get(`/public/files/url?key=${encodeURIComponent(file.ruta_storage)}`)
                 setMediaUrls(prev => ({ ...prev, [file.id]: res.data.data.url }))
-            } catch { }
+            } catch { /* sin previsualización si la URL falla */ }
         })
     }, [project, activeVersion])
 
@@ -156,7 +139,6 @@ export default function GamePage() {
 
     const controles = project.controles ?? []
 
-    const portada = activeVersion?.archivos?.find(f => f.tipo === 'portada')
     const capturas = activeVersion?.archivos?.filter(f => f.tipo === 'captura') ?? []
     const visitCount = project?._count?.visitas ?? 0
 

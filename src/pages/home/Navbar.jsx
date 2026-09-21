@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation }   from 'react-router-dom'
-import { Sun, Moon, Gamepad2 } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 
 export default function Navbar({ isDark, toggleTheme }) {
   const [isScrolled, setIsScrolled] = useState(false)

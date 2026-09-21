@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link }     from 'react-router-dom'
-import { Search, MessageSquare, Star, ArrowRight, Loader2 } from 'lucide-react'
+import { Search, MessageSquare, Star, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button }   from '@/components/ui/button'
-import { Badge }    from '@/components/ui/badge'
 import { useAuthStore } from '@/store/authStore'
 import { teacherService } from '../services/teacher.service'
 

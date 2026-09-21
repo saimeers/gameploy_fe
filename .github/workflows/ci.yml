@@ -24,11 +24,8 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      # TODO: quitar continue-on-error cuando se limpien los errores heredados
-      # (variables sin usar y reglas de react-hooks anteriores a este workflow).
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Ejecutar las pruebas
         run: npm test

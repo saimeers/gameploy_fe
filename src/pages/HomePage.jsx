@@ -1,4 +1,4 @@
-import { useTheme }  from '@/components/ThemeProvider'
+import { useTheme }  from '@/components/theme-context'
 import Navbar        from '@/pages/home/Navbar'
 import Hero          from '@/pages/home/Hero'
 import Features      from '@/pages/home/Features'

@@ -195,9 +195,8 @@ Un cambio incompatible lleva `!` tras el alcance (`feat(router)!: ...`) o un pie
 ### Integración continua
 
 `.github/workflows/ci.yml` instala, pasa el lint, ejecuta las pruebas y compila en cada push
-y en cada Pull Request hacia `main`. El paso de lint está marcado como no bloqueante hasta
-que se limpien los errores heredados. Vercel construye por su cuenta cada push: publica una
-vista previa por rama y producción desde `main`.
+y en cada Pull Request hacia `main`. Los tres pasos son bloqueantes. Vercel construye por su
+cuenta cada push: publica una vista previa por rama y producción desde `main`.
 
 ### Antes de abrir un Pull Request
 

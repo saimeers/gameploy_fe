@@ -7,7 +7,7 @@ import {
 import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar'
-import { useTheme }     from '@/components/ThemeProvider'
+import { useTheme }     from '@/components/theme-context'
 import { useAuth }      from '@/modules/auth/hooks/useAuth'
 import { useAuthStore } from '@/store/authStore'
 

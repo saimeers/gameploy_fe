@@ -41,20 +41,33 @@ export default function ProjectsAdminPage() {
   const [toDelete, setToDelete] = useState(null)
   const limit = 10
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true)
+  const loadProjects = useCallback(
+    () => adminService.getProjects({ page, limit }).then(res => res.data),
+    [page]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    loadProjects()
+      .then(body => {
+        if (cancelled) return
+        setProjects(body.data)
+        setTotal(body.meta.total)
+      })
+      .catch(() => { if (!cancelled) toast.error('Error al cargar proyectos') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadProjects])
+
+  const refreshProjects = async () => {
     try {
-      const res = await adminService.getProjects({ page, limit })
-      setProjects(res.data.data)
-      setTotal(res.data.meta.total)
+      const body = await loadProjects()
+      setProjects(body.data)
+      setTotal(body.meta.total)
     } catch {
       toast.error('Error al cargar proyectos')
-    } finally {
-      setLoading(false)
     }
-  }, [page])
-
-  useEffect(() => { fetchProjects() }, [fetchProjects])
+  }
 
   const filtered = projects.filter(p => {
     const matchSearch = p.nombre.toLowerCase().includes(search.toLowerCase())
@@ -67,7 +80,7 @@ export default function ProjectsAdminPage() {
     try {
       await adminService.toggleFeatured(project.id, !project.destacado)
       toast.success(project.destacado ? 'Proyecto quitado de destacados' : 'Proyecto destacado')
-      fetchProjects()
+      refreshProjects()
     } catch {
       toast.error('Error al actualizar')
     }
@@ -77,7 +90,7 @@ export default function ProjectsAdminPage() {
     try {
       await adminService.deleteProject(toDelete.id)
       toast.success('Proyecto eliminado')
-      fetchProjects()
+      refreshProjects()
     } catch {
       toast.error('Error al eliminar')
     }

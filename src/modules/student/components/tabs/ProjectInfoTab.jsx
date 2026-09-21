@@ -27,7 +27,7 @@ export default function ProjectInfoTab({ project, onUpdated }) {
     project.etiquetas?.map(pe => pe.id_etiqueta) ?? []
   )
 
-  const { register, handleSubmit, setValue, watch, formState: { isDirty } } = useForm({
+  const { register, handleSubmit, setValue, watch } = useForm({
     defaultValues: {
       nombre:        project.nombre,
       descripcion:   project.descripcion ?? '',

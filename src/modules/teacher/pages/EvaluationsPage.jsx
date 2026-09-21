@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link }     from 'react-router-dom'
-import { Star, Gamepad2, ExternalLink, Calendar, Loader2 } from 'lucide-react'
+import { Star, ExternalLink, Calendar, Loader2 } from 'lucide-react'
 import { Badge }  from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
