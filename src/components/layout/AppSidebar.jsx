@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FolderOpen, Plus, Search,
-  MessageSquare, Users, Settings, Gamepad2,
+  MessageSquare, Users, Gamepad2,
   Tag,
 } from 'lucide-react'
 import {

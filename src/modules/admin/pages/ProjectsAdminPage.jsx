@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Search, MoreHorizontal, Star, StarOff, Trash2,
-  ChevronLeft, ChevronRight, ExternalLink,
+  ChevronLeft, ChevronRight, ExternalLink, Eye,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge }   from '@/components/ui/badge'
@@ -22,6 +23,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { adminService } from '../services/admin.service'
+import { LIMITS }       from '@/lib/limits'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -39,20 +41,33 @@ export default function ProjectsAdminPage() {
   const [toDelete, setToDelete] = useState(null)
   const limit = 10
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true)
+  const loadProjects = useCallback(
+    () => adminService.getProjects({ page, limit }).then(res => res.data),
+    [page]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    loadProjects()
+      .then(body => {
+        if (cancelled) return
+        setProjects(body.data)
+        setTotal(body.meta.total)
+      })
+      .catch(() => { if (!cancelled) toast.error('Error al cargar proyectos') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadProjects])
+
+  const refreshProjects = async () => {
     try {
-      const res = await adminService.getProjects({ page, limit })
-      setProjects(res.data.data)
-      setTotal(res.data.meta.total)
+      const body = await loadProjects()
+      setProjects(body.data)
+      setTotal(body.meta.total)
     } catch {
       toast.error('Error al cargar proyectos')
-    } finally {
-      setLoading(false)
     }
-  }, [page])
-
-  useEffect(() => { fetchProjects() }, [fetchProjects])
+  }
 
   const filtered = projects.filter(p => {
     const matchSearch = p.nombre.toLowerCase().includes(search.toLowerCase())
@@ -65,7 +80,7 @@ export default function ProjectsAdminPage() {
     try {
       await adminService.toggleFeatured(project.id, !project.destacado)
       toast.success(project.destacado ? 'Proyecto quitado de destacados' : 'Proyecto destacado')
-      fetchProjects()
+      refreshProjects()
     } catch {
       toast.error('Error al actualizar')
     }
@@ -75,7 +90,7 @@ export default function ProjectsAdminPage() {
     try {
       await adminService.deleteProject(toDelete.id)
       toast.success('Proyecto eliminado')
-      fetchProjects()
+      refreshProjects()
     } catch {
       toast.error('Error al eliminar')
     }
@@ -98,6 +113,7 @@ export default function ProjectsAdminPage() {
           <Input
             placeholder="Buscar por nombre o estudiante..."
             className="pl-9"
+            maxLength={LIMITS.busqueda}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -155,7 +171,12 @@ export default function ProjectsAdminPage() {
                         {project.destacado && (
                           <Star className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
                         )}
-                        <p className="text-sm font-medium">{project.nombre}</p>
+                        <Link
+                          to={`/admin/projects/${project.id}`}
+                          className="text-sm font-medium hover:text-primary hover:underline"
+                        >
+                          {project.nombre}
+                        </Link>
                       </div>
                       <p className="text-xs text-muted-foreground font-mono">/{project.slug}</p>
                     </TableCell>
@@ -188,6 +209,12 @@ export default function ProjectsAdminPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem asChild>
+                            <Link to={`/admin/projects/${project.id}`} className="flex items-center">
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver detalle
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <a
                               href={`/games/${project.slug}`}

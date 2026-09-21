@@ -7,7 +7,7 @@ export default function Hero() {
     <section id="inicio" className="min-h-screen flex items-center justify-center px-6 pt-16">
       <div className="max-w-4xl mx-auto text-center space-y-10">
 
-        <div style={{ position: 'relative', height: '150px' }}>
+        <div className="relative w-full h-[clamp(4rem,18vw,12rem)]">
           <TextPressure
             text="Gameploy"
             flex={true}

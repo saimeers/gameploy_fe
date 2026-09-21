@@ -15,6 +15,7 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import api from '@/services/api'
+import { LIMITS } from '@/lib/limits'
 
 function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, deleteFn }) {
     const [items, setItems] = useState([])
@@ -26,16 +27,21 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
 
     const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm()
 
-    const fetch = useCallback(async () => {
-        setLoading(true)
-        try {
-            const res = await fetchFn()
-            setItems(res.data.data)
-        } catch { toast.error(`Error al cargar ${label}`) }
-        finally { setLoading(false) }
-    }, [fetchFn, label])
+    const load = useCallback(() => fetchFn().then(res => res.data.data), [fetchFn])
 
-    useEffect(() => { fetch() }, [fetch])
+    useEffect(() => {
+        let cancelled = false
+        load()
+            .then(data => { if (!cancelled) setItems(data) })
+            .catch(() => { if (!cancelled) toast.error(`Error al cargar ${label}`) })
+            .finally(() => { if (!cancelled) setLoading(false) })
+        return () => { cancelled = true }
+    }, [load, label])
+
+    const refresh = async () => {
+        try { setItems(await load()) }
+        catch { toast.error(`Error al cargar ${label}`) }
+    }
 
     const openCreate = () => {
         reset(type !== 'etiqueta'
@@ -64,7 +70,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                 toast.success(`${label} actualizada`)
             }
             setDialog(null)
-            fetch()
+            refresh()
         } catch (err) {
             toast.error(err.response?.data?.message ?? 'Error al guardar')
         } finally { setSaving(false) }
@@ -75,7 +81,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
         try {
             await deleteFn(toDelete.id)
             toast.success(`${label} eliminada`)
-            fetch()
+            refresh()
         } catch (err) {
             toast.error(err.response?.data?.message ?? 'No se puede eliminar, puede estar en uso')
         } finally {
@@ -146,6 +152,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                         <div className="space-y-1.5">
                             <Label>Nombre *</Label>
                             <Input
+                                maxLength={LIMITS.nombreCatalogo}
                                 {...register('nombre', { required: 'El nombre es requerido' })}
                                 disabled={saving}
                             />
@@ -154,7 +161,11 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                         {type !== 'etiqueta' && (
                             <div className="space-y-1.5">
                                 <Label>Descripción</Label>
-                                <Input {...register('descripcion')} disabled={saving} />
+                                <Input
+                                    maxLength={LIMITS.descripcionCatalogo}
+                                    {...register('descripcion')}
+                                    disabled={saving}
+                                />
                             </div>
                         )}
                         <DialogFooter>

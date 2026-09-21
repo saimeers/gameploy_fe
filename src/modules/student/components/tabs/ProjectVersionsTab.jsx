@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   Plus, CheckCircle, Upload, FileArchive, Image, Camera,
-  Loader2, FolderOpen, Download, Trash2, Eye, EyeOff, X, Expand
+  Loader2, FolderOpen, Trash2, Eye, Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,17 +12,21 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent,
 } from '@/components/ui/dialog'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { studentService } from '../../services/student.service'
-import api from '@/services/api'
+import { LIMITS }         from '@/lib/limits'
+
+/** Etiqueta e icono de cada tipo de archivo en la lista de herencia. */
+const INHERIT_FILE_CFG = {
+  juego_webgl: { label: 'Juego WebGL', icon: FileArchive },
+  portada:     { label: 'Portada',     icon: Image },
+  captura:     { label: 'Captura',     icon: Camera },
+}
 
 // ─── Semantic version helpers ─────────────────────────────────────────────────
 
@@ -64,175 +68,6 @@ function isVersionGreater(newStr, latestStr) {
   if (n.beta && !l.beta) return false
   return true
 }
-
-// ─── WebGL zip validator ──────────────────────────────────────────────────────
-
-async function validateWebGLZip(file) {
-  // We use the browser's native zip reading via DataTransferItem — not available
-  // so we do a lightweight check: filename pattern and size
-  // For proper validation, use JSZip
-  const JSZip = (await import('jszip')).default
-  const zip = await JSZip.loadAsync(file)
-  const paths = Object.keys(zip.files)
-
-  const hasIndexHtml = paths.some(p => p === 'index.html' || p.endsWith('/index.html'))
-  const hasBuildFolder = paths.some(p => p.startsWith('Build/') || p.includes('/Build/'))
-  const hasTemplateData = paths.some(p => p.startsWith('TemplateData/') || p.includes('/TemplateData/'))
-
-  const errors = []
-  if (!hasIndexHtml) errors.push('Falta index.html')
-  if (!hasBuildFolder) errors.push('Falta carpeta /Build')
-  if (!hasTemplateData) errors.push('Falta carpeta /TemplateData')
-
-  // Check Build folder has the expected files
-  const buildFiles = paths.filter(p => p.includes('Build/'))
-  const hasLoader = buildFiles.some(p => p.endsWith('.loader.js'))
-  const hasFramework = buildFiles.some(p => p.endsWith('.framework.js'))
-  const hasData = buildFiles.some(p => p.endsWith('.data') || p.endsWith('.data.gz') || p.endsWith('.data.br'))
-  const hasWasm = buildFiles.some(p => p.endsWith('.wasm') || p.endsWith('.wasm.gz') || p.endsWith('.wasm.br'))
-
-  if (!hasLoader) errors.push('Falta .loader.js en /Build')
-  if (!hasFramework) errors.push('Falta .framework.js en /Build')
-  if (!hasData) errors.push('Falta .data en /Build')
-  if (!hasWasm) errors.push('Falta .wasm en /Build')
-
-  return { valid: errors.length === 0, errors }
-}
-
-// ─── File preview modal ───────────────────────────────────────────────────────
-
-function FilePreviewModal({ files, open, onClose, onDelete, projectId, versionId }) {
-  const [urlCache, setUrlCache] = useState({})
-  const [loadingUrl, setLoadingUrl] = useState({})
-  const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [deleteInput, setDeleteInput] = useState('')
-
-  const loadUrl = async (file) => {
-    if (urlCache[file.id]) return
-    setLoadingUrl(prev => ({ ...prev, [file.id]: true }))
-    try {
-      const res = await api.get(`/public/files/url?key=${encodeURIComponent(file.ruta_storage)}`)
-      setUrlCache(prev => ({ ...prev, [file.id]: res.data.data.url }))
-    } catch { toast.error('Error al cargar preview') }
-    finally { setLoadingUrl(prev => ({ ...prev, [file.id]: false })) }
-  }
-
-  useEffect(() => {
-    if (open) files.forEach(f => f.tipo !== 'juego_webgl' && loadUrl(f))
-  }, [open, files])
-
-  const handleDelete = async () => {
-    if (deleteInput !== 'eliminar') return
-    try {
-      await api.delete(`/projects/${projectId}/versions/${versionId}/files/${deleteConfirm.id}`)
-      toast.success('Archivo eliminado permanentemente')
-      setDeleteConfirm(null)
-      setDeleteInput('')
-      onDelete()
-    } catch { toast.error('Error al eliminar') }
-  }
-
-  const imageFiles = files.filter(f => f.tipo !== 'juego_webgl')
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="bg-background text-popover-foreground sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Archivos de la versión</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-            {imageFiles.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No hay imágenes en esta versión.
-              </p>
-            ) : (
-              imageFiles.map(file => (
-                <div key={file.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {file.tipo === 'portada' ? (
-                        <Image className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Camera className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="text-xs font-medium capitalize">
-                        {file.tipo === 'portada' ? 'Portada' : 'Captura'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{file.nombre_archivo}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {urlCache[file.id] && (
-                        <a href={urlCache[file.id]} download={file.nombre_archivo} target="_blank" rel="noreferrer">
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
-                        </a>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteConfirm(file)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {loadingUrl[file.id] ? (
-                    <div className="flex items-center justify-center h-32 rounded-lg border border-border/50 bg-muted/20">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : urlCache[file.id] ? (
-                    <img
-                      src={urlCache[file.id]}
-                      alt={file.nombre_archivo}
-                      className="w-full rounded-lg border border-border/50 object-cover max-h-64"
-                    />
-                  ) : null}
-                </div>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Permanent delete confirm — must type "eliminar" */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => { setDeleteConfirm(null); setDeleteInput('') }}>
-        <AlertDialogContent className="bg-background text-popover-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar archivo permanentemente</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span>Esta acción no se puede deshacer. El archivo se eliminará del almacenamiento.</span>
-              <span className="block mt-2">
-                Escribe <strong>eliminar</strong> para confirmar:
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Input
-            className="mt-2"
-            placeholder="eliminar"
-            value={deleteInput}
-            onChange={e => setDeleteInput(e.target.value)}
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteInput !== 'eliminar'}
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar permanentemente
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  )
-}
-
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
 function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFileAdded, onFileDeleted }) {
@@ -263,7 +98,7 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
       try {
         const res = await studentService.getFileUrl(file.ruta_storage)
         setPreviews(prev => ({ ...prev, [file.id]: res.data.data.url }))
-      } catch { }
+      } catch { /* sin previsualización si la URL falla */ }
     })
   }, [existingFiles])
 
@@ -469,6 +304,7 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
           <Input
             className="mt-2"
             placeholder="eliminar"
+            maxLength={LIMITS.confirmacion}
             value={deleteInput}
             onChange={e => setDeleteInput(e.target.value)}
           />
@@ -491,9 +327,18 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
 // ─── Version card ─────────────────────────────────────────────────────────────
 
 function VersionCard({ version: initialVersion, projectId, onActivated }) {
+  // La tarjeta lleva su propia copia para reflejar altas y bajas de archivos sin
+  // esperar a que el padre recargue; cuando el padre trae datos nuevos, se
+  // descarta la copia local (patrón de ajuste de estado al cambiar una prop).
   const [version, setVersion] = useState(initialVersion)
+  const [syncedFrom, setSyncedFrom] = useState(initialVersion)
   const [activating, setActivating] = useState(false)
   const [expanded, setExpanded] = useState(false)
+
+  if (initialVersion !== syncedFrom) {
+    setSyncedFrom(initialVersion)
+    setVersion(initialVersion)
+  }
 
   const handleFileAdded = (newFile) => {
     setVersion(prev => {
@@ -515,7 +360,6 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
     }))
   }
 
-  useEffect(() => { setVersion(initialVersion) }, [initialVersion])
 
   const handleActivate = async () => {
     setActivating(true)
@@ -638,22 +482,53 @@ export default function ProjectVersionsTab({ projectId }) {
   const [isBeta, setIsBeta] = useState(false)
   const [customVersion, setCustomVersion] = useState('')
   const [versionError, setVersionError] = useState('')
+  // Ids de los archivos de la versión activa que la nueva versión conservará
+  const [keepFiles, setKeepFiles] = useState([])
 
   const { register, handleSubmit, reset } = useForm()
 
-  const fetchVersions = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await studentService.getVersions(projectId)
-      setVersions(res.data.data)
-    } catch { toast.error('Error al cargar versiones') }
-    finally { setLoading(false) }
-  }, [projectId])
+  const loadVersions = useCallback(
+    () => studentService.getVersions(projectId).then(res => res.data.data),
+    [projectId]
+  )
 
-  useEffect(() => { fetchVersions() }, [fetchVersions])
+  useEffect(() => {
+    let cancelled = false
+    loadVersions()
+      .then(data => { if (!cancelled) setVersions(data) })
+      .catch(() => { if (!cancelled) toast.error('Error al cargar versiones') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadVersions])
+
+  const refreshVersions = async () => {
+    try {
+      setVersions(await loadVersions())
+    } catch {
+      toast.error('Error al cargar versiones')
+    }
+  }
 
   // Latest published version (first in list after ordering by date desc)
   const latestVersion = versions[0]?.numero_version
+
+  // Archivos que la nueva versión puede heredar de la activa
+  const inheritable = versions.find(v => v.es_activa)?.archivos ?? []
+
+  const toggleForm = () => {
+    setShowForm(open => {
+      if (!open) setKeepFiles(inheritable.map(a => a.id))
+      return !open
+    })
+    setCustomVersion('')
+    setVersionError('')
+  }
+
+  const toggleKeepFile = (fileId) => {
+    setKeepFiles(prev =>
+      prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
+    )
+  }
 
   // Auto-suggest version
   const suggested = suggestNext(latestVersion, bumpType)
@@ -692,6 +567,7 @@ export default function ProjectVersionsTab({ projectId }) {
       await studentService.createVersion(projectId, {
         numero_version: finalVersion,
         notas_version: data.notas_version || null,
+        heredar: keepFiles,
       })
       toast.success(`Versión ${finalVersion} creada`)
       reset()
@@ -699,7 +575,7 @@ export default function ProjectVersionsTab({ projectId }) {
       setCustomVersion('')
       setBumpType('minor')
       setIsBeta(false)
-      fetchVersions()
+      refreshVersions()
     } catch (err) {
       toast.error(err.response?.data?.message ?? 'Error al crear versión')
     } finally { setCreating(false) }
@@ -719,7 +595,7 @@ export default function ProjectVersionsTab({ projectId }) {
           size="sm"
           variant={showForm ? 'outline' : 'default'}
           className="gap-2"
-          onClick={() => { setShowForm(v => !v); setCustomVersion(''); setVersionError('') }}
+          onClick={toggleForm}
         >
           <Plus className="h-4 w-4" />
           {showForm ? 'Cancelar' : 'Nueva versión'}
@@ -785,6 +661,7 @@ export default function ProjectVersionsTab({ projectId }) {
                 <Input
                   className="font-mono"
                   placeholder={previewVersion}
+                  maxLength={LIMITS.numeroVersion}
                   value={customVersion}
                   onChange={e => validateAndSetVersion(e.target.value)}
                 />
@@ -800,9 +677,53 @@ export default function ProjectVersionsTab({ projectId }) {
                 <Label className="text-xs">Notas de cambios</Label>
                 <Input
                   placeholder="¿Qué cambió en esta versión?"
+                  maxLength={LIMITS.notasVersion}
                   {...register('notas_version')}
                 />
               </div>
+
+              {/* Archivos que se conservan de la versión activa */}
+              {inheritable.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Archivos que conservas</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Desmarca los que vayas a reemplazar: esos tendrás que subirlos de nuevo
+                    en la versión nueva. Los marcados se mantienen sin volver a subirlos.
+                  </p>
+                  <div className="space-y-1.5 pt-1">
+                    {inheritable.map(archivo => {
+                      const cfg = INHERIT_FILE_CFG[archivo.tipo] ?? { label: archivo.tipo, icon: FileArchive }
+                      const Icon = cfg.icon
+                      const keep = keepFiles.includes(archivo.id)
+                      return (
+                        <button
+                          key={archivo.id}
+                          type="button"
+                          onClick={() => toggleKeepFile(archivo.id)}
+                          className={`flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
+                            keep
+                              ? 'border-primary/50 bg-primary/10'
+                              : 'border-border/40 bg-background/40 opacity-60'
+                          }`}
+                        >
+                          <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                            keep ? 'border-primary bg-primary text-primary-foreground' : 'border-border'
+                          }`}>
+                            {keep && <Check className="h-3 w-3" />}
+                          </span>
+                          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs">{archivo.nombre_archivo}</span>
+                            <span className="block text-[10px] text-muted-foreground">
+                              {cfg.label} · {keep ? 'se conserva' : 'lo subirás de nuevo'}
+                            </span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <Button type="submit" size="sm" disabled={creating || !!versionError}>
@@ -834,8 +755,8 @@ export default function ProjectVersionsTab({ projectId }) {
               key={version.id}
               version={version}
               projectId={projectId}
-              onActivated={fetchVersions}
-              onUploaded={fetchVersions}
+              onActivated={refreshVersions}
+              onUploaded={refreshVersions}
             />
           ))}
         </div>

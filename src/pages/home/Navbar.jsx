@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation }   from 'react-router-dom'
-import { Sun, Moon, Gamepad2 } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
 
 export default function Navbar({ isDark, toggleTheme }) {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -27,11 +27,7 @@ export default function Navbar({ isDark, toggleTheme }) {
 
         <div className="hidden gap-8 text-sm font-medium text-muted-foreground md:flex">
           {isHome ? (
-            <>
-              <a href="#inicio"    className="transition-colors hover:text-foreground">Inicio</a>
-              <a href="#sobre"     className="transition-colors hover:text-foreground">Plataforma</a>
-              <a href="#funciones" className="transition-colors hover:text-foreground">Funciones</a>
-            </>
+            <a href="#inicio" className="transition-colors hover:text-foreground">Inicio</a>
           ) : null}
           <Link to="/games" className="transition-colors hover:text-foreground flex items-center gap-1.5">
             Juegos

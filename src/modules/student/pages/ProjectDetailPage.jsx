@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate }      from 'react-router-dom'
 import { toast }        from 'sonner'
 import {
   ArrowLeft, Globe, Lock, Link2, Loader2,
-  CheckCircle, ExternalLink, Send,
+  ExternalLink, Send,
 } from 'lucide-react'
 import { Button }  from '@/components/ui/button'
 import { Badge }   from '@/components/ui/badge'
@@ -33,20 +33,33 @@ export default function ProjectDetailPage() {
   const [publishing, setPublishing]   = useState(false)
   const [confirmPublish, setConfirmPublish] = useState(false)
 
-  const fetchProject = useCallback(async () => {
+  const loadProject = useCallback(
+    () => studentService.getMyProjects({ limit: 50 })
+      .then(res => res.data.data.find(p => p.id === id)),
+    [id]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    loadProject()
+      .then(found => {
+        if (cancelled) return
+        if (!found) { navigate('/student'); return }
+        setProject(found)
+      })
+      .catch(() => { if (!cancelled) toast.error('Error al cargar el proyecto') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadProject, navigate])
+
+  const refreshProject = async () => {
     try {
-      const res = await studentService.getMyProjects({ limit: 50 })
-      const found = res.data.data.find(p => p.id === id)
-      if (!found) { navigate('/student'); return }
-      setProject(found)
+      const found = await loadProject()
+      if (found) setProject(found)
     } catch {
       toast.error('Error al cargar el proyecto')
-    } finally {
-      setLoading(false)
     }
-  }, [id, navigate])
-
-  useEffect(() => { fetchProject() }, [fetchProject])
+  }
 
   const handlePublish = async () => {
     setPublishing(true)
@@ -55,7 +68,7 @@ export default function ProjectDetailPage() {
       toast.success('¡Proyecto publicado!', {
         description: `Tu juego ya es accesible en /games/${project.slug}`,
       })
-      fetchProject()
+      refreshProject()
     } catch (err) {
       toast.error(err.response?.data?.message ?? 'Error al publicar')
     } finally {
@@ -146,7 +159,7 @@ export default function ProjectDetailPage() {
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
-          <ProjectInfoTab project={project} onUpdated={fetchProject} />
+          <ProjectInfoTab project={project} onUpdated={refreshProject} />
         </TabsContent>
 
         <TabsContent value="controles" className="mt-4">

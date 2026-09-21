@@ -7,12 +7,12 @@ import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
 import { Label }    from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge }    from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { studentService } from '../services/student.service'
+import { LIMITS }         from '@/lib/limits'
 
 export default function NewProjectPage() {
   const navigate = useNavigate()
@@ -87,6 +87,7 @@ export default function NewProjectPage() {
               <Input
                 id="nombre"
                 placeholder="Ej: Memoria Cognitiva 2025"
+                maxLength={LIMITS.nombreProyecto}
                 disabled={loading}
                 {...register('nombre', { required: 'El nombre es requerido' })}
               />
@@ -99,9 +100,13 @@ export default function NewProjectPage() {
                 id="descripcion"
                 placeholder="Describe brevemente tu juego y sus objetivos pedagógicos..."
                 rows={3}
+                maxLength={LIMITS.descripcionProyecto}
                 disabled={loading}
                 {...register('descripcion')}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {(watch('descripcion') || '').length} / {LIMITS.descripcionProyecto}
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -110,9 +115,13 @@ export default function NewProjectPage() {
                 id="instrucciones"
                 placeholder="Describe cómo se juega, qué debe hacer el usuario..."
                 rows={3}
+                maxLength={LIMITS.instruccionesProyecto}
                 disabled={loading}
                 {...register('instrucciones')}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {(watch('instrucciones') || '').length} / {LIMITS.instruccionesProyecto}
+              </p>
             </div>
 
             <div className="space-y-1.5">

@@ -25,6 +25,7 @@ import EvaluationsPage from '@/modules/teacher/pages/EvaluationsPage'
 import AdminDashboard from '@/modules/admin/pages/AdminDashboard'
 import UsersPage from '@/modules/admin/pages/UsersPage'
 import ProjectsAdminPage from '@/modules/admin/pages/ProjectsAdminPage'
+import ProjectDetailAdminPage from '@/modules/admin/pages/ProjectDetailAdminPage'
 import CatalogAdminPage from '@/modules/admin/pages/CatalogAdminPage'
 
 export const router = createBrowserRouter([
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: '/admin', element: <AdminDashboard /> },
       { path: '/admin/users', element: <UsersPage /> },
       { path: '/admin/projects', element: <ProjectsAdminPage /> },
+      { path: '/admin/projects/:id', element: <ProjectDetailAdminPage /> },
       { path: '/admin/catalog', element: <CatalogAdminPage /> },
     ],
   },

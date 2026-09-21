@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Tag, Gamepad2, Eye, User, Loader2 } from 'lucide-react'
+import { Search, Gamepad2, Eye, User, Loader2 } from 'lucide-react'
 import { Input }  from '@/components/ui/input'
 import { Badge }  from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,9 +8,10 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { useTheme }  from '@/components/ThemeProvider'
+import { useTheme }  from '@/components/theme-context'
 import Navbar        from '@/pages/home/Navbar'
 import api           from '@/services/api'
+import { LIMITS }    from '@/lib/limits'
 
 function GameCard({ project }) {
   const portadaFile = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')
@@ -93,24 +94,29 @@ export default function GamesListPage() {
     api.get('/search/categorias').then(r => setCategorias(r.data.data)).catch(() => {})
   }, [])
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { page, limit }
-      if (search)                params.q         = search
-      if (categoria !== 'all')   params.categoria = categoria
-      const res = await api.get('/search', { params })
-      setProjects(res.data.data)
-      setTotal(res.data.meta?.total ?? 0)
-    } catch {}
-    finally { setLoading(false) }
+  const loadProjects = useCallback(() => {
+    const params = { page, limit }
+    if (search)              params.q         = search
+    if (categoria !== 'all') params.categoria = categoria
+    return api.get('/search', { params }).then(res => res.data)
   }, [search, categoria, page])
 
-  useEffect(() => { fetchProjects() }, [fetchProjects])
-
-  // Debounce search
   useEffect(() => {
-    const t = setTimeout(() => { setPage(1); fetchProjects() }, 400)
+    let cancelled = false
+    loadProjects()
+      .then(body => {
+        if (cancelled) return
+        setProjects(body.data)
+        setTotal(body.meta?.total ?? 0)
+      })
+      .catch(() => { /* el catálogo queda vacío si la búsqueda falla */ })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadProjects])
+
+  // Al cambiar la búsqueda se vuelve a la primera página
+  useEffect(() => {
+    const t = setTimeout(() => setPage(1), 400)
     return () => clearTimeout(t)
   }, [search])
 
@@ -133,6 +139,7 @@ export default function GamesListPage() {
             <Input
               placeholder="Buscar juegos..."
               className="pl-9"
+              maxLength={LIMITS.busqueda}
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
             />

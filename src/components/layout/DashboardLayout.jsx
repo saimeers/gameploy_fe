@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { Separator } from '@/components/ui/separator'
 import { AppSidebar } from './AppSidebar'
 
 const breadcrumbMap = {

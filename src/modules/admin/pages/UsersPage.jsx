@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
-  CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight,
+  CheckCircle, XCircle, ChevronLeft, ChevronRight,
   Search, MoreHorizontal, ShieldCheck, UserX, UserCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { adminService } from '../services/admin.service'
+import { LIMITS }       from '@/lib/limits'
 
 const ROLE_LABELS = {
   admin: { label: 'Admin', class: 'bg-primary/20 text-primary border-primary/30' },
@@ -50,20 +51,33 @@ export default function UsersPage() {
   const [confirm, setConfirm] = useState(null) // { type, user }
   const limit = 10
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true)
+  const loadUsers = useCallback(
+    () => adminService.getUsers({ page, limit }).then(res => res.data),
+    [page]
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    loadUsers()
+      .then(body => {
+        if (cancelled) return
+        setUsers(body.data)
+        setTotal(body.meta.total)
+      })
+      .catch(() => { if (!cancelled) toast.error('Error al cargar usuarios') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [loadUsers])
+
+  const refreshUsers = async () => {
     try {
-      const res = await adminService.getUsers({ page, limit })
-      setUsers(res.data.data)
-      setTotal(res.data.meta.total)
+      const body = await loadUsers()
+      setUsers(body.data)
+      setTotal(body.meta.total)
     } catch {
       toast.error('Error al cargar usuarios')
-    } finally {
-      setLoading(false)
     }
-  }, [page])
-
-  useEffect(() => { fetchUsers() }, [fetchUsers])
+  }
 
   const filtered = users.filter(u => {
     const matchSearch = u.nombre.toLowerCase().includes(search.toLowerCase())
@@ -76,7 +90,7 @@ export default function UsersPage() {
     try {
       await adminService.approveUser(user.id)
       toast.success(`${user.nombre} aprobado`)
-      fetchUsers()
+      refreshUsers()
     } catch (err) {
       toast.error(err.response?.data?.message ?? 'Error al aprobar')
     }
@@ -86,7 +100,7 @@ export default function UsersPage() {
     try {
       await adminService.updateRole(userId, rol)
       toast.success('Rol actualizado')
-      fetchUsers()
+      refreshUsers()
     } catch {
       toast.error('Error al actualizar rol')
     }
@@ -96,7 +110,7 @@ export default function UsersPage() {
     try {
       await adminService.toggleStatus(user.id, !user.activo)
       toast.success(user.activo ? 'Usuario desactivado' : 'Usuario activado')
-      fetchUsers()
+      refreshUsers()
     } catch {
       toast.error('Error al cambiar estado')
     }
@@ -119,6 +133,7 @@ export default function UsersPage() {
           <Input
             placeholder="Buscar por nombre o correo..."
             className="pl-9"
+            maxLength={LIMITS.busqueda}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -171,7 +186,7 @@ export default function UsersPage() {
                 <TableRow key={user.id} className="hover:bg-accent/20">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-7 w-7 rounded-md">
+                      <Avatar className="h-7 w-7">
                         {user.foto_perfil ? (
                           <img
                             src={user.foto_perfil}
@@ -179,7 +194,7 @@ export default function UsersPage() {
                             className="h-full w-full object-cover rounded-md"
                           />
                         ) : (
-                          <AvatarFallback className="rounded-md bg-primary/20 text-primary text-xs">
+                          <AvatarFallback className="bg-primary/20 text-primary text-xs">
                             {user.nombre
                               .split(' ')
                               .map(n => n[0])
