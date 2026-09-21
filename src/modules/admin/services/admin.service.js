@@ -28,6 +28,9 @@ export const adminService = {
   getFileUrl: (key) =>
     api.get(`/public/files/url?key=${encodeURIComponent(key)}`),
 
+  deleteFile: (fileId) =>
+    api.delete(`/admin/files/${fileId}`),
+
   toggleFeatured: (projectId, destacado) =>
     api.patch(`/admin/projects/${projectId}/featured`, { destacado }),
 

@@ -4,14 +4,18 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, Globe, Lock, Link2, Loader2, ExternalLink,
   Star, Eye, MessageSquare, FileArchive, Image, Camera,
-  Download, Gamepad2, EyeOff, Tag,
+  Download, Gamepad2, EyeOff, Tag, Trash2, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge }  from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
 import { adminService } from '../services/admin.service'
 import ControlsViewer   from '@/components/controls/ControlsViewer'
+import HoldButton       from '@/components/HoldButton'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -65,6 +69,7 @@ export default function ProjectDetailAdminPage() {
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
   const [openingFile, setOpeningFile] = useState(null)
+  const [fileToDelete, setFileToDelete] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -99,6 +104,23 @@ export default function ProjectDetailAdminPage() {
       toast.error('No se pudo abrir el archivo')
     } finally {
       setOpeningFile(null)
+    }
+  }
+
+  /** Borrado permanente: quita el archivo del bucket y de la base de datos. */
+  const deleteFile = async (archivo) => {
+    try {
+      await adminService.deleteFile(archivo.id)
+      setProject(prev => ({
+        ...prev,
+        versiones: prev.versiones.map(version => ({
+          ...version,
+          archivos: (version.archivos ?? []).filter(a => a.id !== archivo.id),
+        })),
+      }))
+      toast.success('Archivo eliminado definitivamente')
+    } catch {
+      toast.error('No se pudo eliminar el archivo')
     }
   }
 
@@ -137,7 +159,6 @@ export default function ProjectDetailAdminPage() {
               <Badge variant="outline" className={`text-xs ${statusCfg.class}`}>
                 {statusCfg.label}
               </Badge>
-              <Badge variant="outline" className="text-xs">Solo lectura</Badge>
             </div>
             <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
               <VisIcon className="h-3 w-3" />
@@ -316,6 +337,15 @@ export default function ProjectDetailAdminPage() {
                                 ? <Loader2 className="h-4 w-4 animate-spin" />
                                 : <Download className="h-4 w-4" />}
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                              title="Eliminar definitivamente"
+                              onClick={() => setFileToDelete(archivo)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         )
                       })}
@@ -378,6 +408,56 @@ export default function ProjectDetailAdminPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Borrado permanente de un archivo */}
+      <Dialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eliminar archivo</DialogTitle>
+            <DialogDescription>
+              Se borrará del almacenamiento y de la base de datos. No se puede deshacer,
+              y el proyecto de <strong>{project.usuario?.nombre}</strong> dejará de tenerlo.
+            </DialogDescription>
+          </DialogHeader>
+
+          {fileToDelete && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+                <p className="truncate text-sm font-medium">{fileToDelete.nombre_archivo}</p>
+                <p className="text-xs text-muted-foreground">
+                  {FILE_CFG[fileToDelete.tipo]?.label ?? fileToDelete.tipo}
+                  {' · '}
+                  {formatBytes(fileToDelete.tamanio_bytes)}
+                </p>
+              </div>
+
+              <HoldButton
+                className="w-full"
+                size="md"
+                radius={8}
+                holdTime={2000}
+                backgroundColor="var(--muted)"
+                fillColor="var(--destructive)"
+                textColor="var(--foreground)"
+                fillTextColor="#ffffff"
+                icon={<Trash2 className="h-4 w-4" />}
+                doneIcon={<Check className="h-4 w-4" />}
+                doneLabel="Eliminado"
+                resetAfter={0}
+                onHold={() => {
+                  const archivo = fileToDelete
+                  setTimeout(() => {
+                    deleteFile(archivo)
+                    setFileToDelete(null)
+                  }, 600)
+                }}
+              >
+                Mantén pulsado para eliminar
+              </HoldButton>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
