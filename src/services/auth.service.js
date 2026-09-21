@@ -5,6 +5,8 @@ import {
   GoogleAuthProvider,
   EmailAuthProvider,
   linkWithCredential,
+  reauthenticateWithCredential,
+  updatePassword,
   signOut,
   getAuth,
 } from 'firebase/auth'
@@ -85,5 +87,30 @@ export const authService = {
 
   logout: async () => {
     await signOut(auth)
+  },
+
+  /**
+   * ¿La cuenta tiene contraseña? Quien entró solo con Google no la tiene, así
+   * que no puede cambiarla: primero debe establecer una desde el correo.
+   */
+  hasPasswordProvider: () =>
+    auth.currentUser?.providerData?.some(p => p.providerId === 'password') ?? false,
+
+  /**
+   * Cambia la contraseña. Firebase exige reautenticar antes de tocarla, así que
+   * la actual se valida de paso: si no coincide, la reautenticación falla.
+   */
+  changePassword: async (passwordActual, passwordNueva) => {
+    const user = auth.currentUser
+    if (!user) throw new Error('Sesión expirada. Vuelve a iniciar sesión.')
+
+    const credential = EmailAuthProvider.credential(user.email, passwordActual)
+    await reauthenticateWithCredential(user, credential)
+    await updatePassword(user, passwordNueva)
+  },
+
+  /** Envía al correo el enlace para restablecerla, por si no la recuerda. */
+  sendPasswordReset: async (correo) => {
+    await api.post('/auth/forgot-password', { correo })
   },
 }
