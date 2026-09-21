@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Search, MoreHorizontal, Star, StarOff, Trash2,
-  ChevronLeft, ChevronRight, ExternalLink,
+  ChevronLeft, ChevronRight, ExternalLink, Eye,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge }   from '@/components/ui/badge'
@@ -157,7 +158,12 @@ export default function ProjectsAdminPage() {
                         {project.destacado && (
                           <Star className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
                         )}
-                        <p className="text-sm font-medium">{project.nombre}</p>
+                        <Link
+                          to={`/admin/projects/${project.id}`}
+                          className="text-sm font-medium hover:text-primary hover:underline"
+                        >
+                          {project.nombre}
+                        </Link>
                       </div>
                       <p className="text-xs text-muted-foreground font-mono">/{project.slug}</p>
                     </TableCell>
@@ -190,6 +196,12 @@ export default function ProjectsAdminPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem asChild>
+                            <Link to={`/admin/projects/${project.id}`} className="flex items-center">
+                              <Eye className="mr-2 h-4 w-4" />
+                              Ver detalle
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <a
                               href={`/games/${project.slug}`}

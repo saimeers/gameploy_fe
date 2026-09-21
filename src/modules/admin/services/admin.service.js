@@ -22,6 +22,12 @@ export const adminService = {
   getProjects: (params) =>
     api.get('/admin/projects', { params }),
 
+  getProject: (projectId) =>
+    api.get(`/admin/projects/${projectId}`),
+
+  getFileUrl: (key) =>
+    api.get(`/public/files/url?key=${encodeURIComponent(key)}`),
+
   toggleFeatured: (projectId, destacado) =>
     api.patch(`/admin/projects/${projectId}/featured`, { destacado }),
 
