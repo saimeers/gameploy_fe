@@ -4,7 +4,7 @@ import Navbar from '@/pages/home/Navbar'
 import { useTheme } from '@/components/ThemeProvider'
 import {
     Loader2, Gamepad2, User, Calendar, Tag,
-    Globe, Link2, ExternalLink, Star, ChevronRight,
+    Globe, Link2, ExternalLink, Star,
     Eye,
 } from 'lucide-react'
 import {
@@ -17,13 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import api from '@/services/api'
-
-const INPUT_LABELS = {
-    teclado: '⌨️ Teclado',
-    mouse: '🖱️ Mouse',
-    mando: '🎮 Mando',
-    mobile: '📱 Mobile',
-}
+import ControlsViewer from '@/components/controls/ControlsViewer'
 
 function GamePlayer({ archivos, projectName, projectId, versionId }) {
     const [loading, setLoading] = useState(true)
@@ -160,11 +154,7 @@ export default function GamePage() {
     )
 
 
-    const controlesByType = (project.controles ?? []).reduce((acc, c) => {
-        if (!acc[c.tipo_entrada]) acc[c.tipo_entrada] = []
-        acc[c.tipo_entrada].push(c)
-        return acc
-    }, {})
+    const controles = project.controles ?? []
 
     const portada = activeVersion?.archivos?.find(f => f.tipo === 'portada')
     const capturas = activeVersion?.archivos?.filter(f => f.tipo === 'captura') ?? []
@@ -325,32 +315,13 @@ export default function GamePage() {
                         )}
 
                         {/* Controles */}
-                        {Object.keys(controlesByType).length > 0 && (
+                        {controles.length > 0 && (
                             <Card className="border-border/50 bg-card/60">
                                 <CardHeader>
                                     <CardTitle className="text-sm">Controles del juego</CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    {Object.entries(controlesByType).map(([tipo, items]) => (
-                                        <div key={tipo} className="space-y-2">
-                                            <p className="text-xs font-medium text-muted-foreground">
-                                                {INPUT_LABELS[tipo] ?? tipo}
-                                            </p>
-                                            <div className="space-y-1.5">
-                                                {items.map(control => (
-                                                    <div key={control.id} className="flex items-center gap-3">
-                                                        <kbd className="rounded bg-accent/60 border border-border/50 px-2 py-0.5 text-xs font-mono min-w-fit">
-                                                            {control.tecla_boton}
-                                                        </kbd>
-                                                        <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {control.descripcion_accion}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
+                                <CardContent>
+                                    <ControlsViewer controls={controles} />
                                 </CardContent>
                             </Card>
                         )}
