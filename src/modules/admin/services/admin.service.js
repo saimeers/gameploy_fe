@@ -40,4 +40,7 @@ export const adminService = {
   // Comments
   moderateComment: (commentId, activo) =>
     api.patch(`/admin/comments/${commentId}/moderate`, { activo }),
+
+  deleteComment: (commentId) =>
+    api.delete(`/admin/comments/${commentId}`),
 }

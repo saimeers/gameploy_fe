@@ -63,6 +63,45 @@ function Stat({ icon: Icon, value, label }) {
   )
 }
 
+/**
+ * Confirmación de una acción irreversible: exige mantener pulsado el botón,
+ * y deja ver el estado "Eliminado" un instante antes de cerrarse.
+ */
+function HoldDeleteDialog({ open, onOpenChange, title, description, label, onConfirm, children }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {children}
+
+          <HoldButton
+            className="w-full"
+            size="md"
+            radius={8}
+            holdTime={2000}
+            backgroundColor="var(--muted)"
+            fillColor="var(--destructive)"
+            textColor="var(--foreground)"
+            fillTextColor="#ffffff"
+            icon={<Trash2 className="h-4 w-4" />}
+            doneIcon={<Check className="h-4 w-4" />}
+            doneLabel="Eliminado"
+            resetAfter={0}
+            onHold={() => setTimeout(onConfirm, 600)}
+          >
+            {label}
+          </HoldButton>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function ProjectDetailAdminPage() {
   const { id }   = useParams()
   const navigate = useNavigate()
@@ -70,6 +109,8 @@ export default function ProjectDetailAdminPage() {
   const [loading, setLoading] = useState(true)
   const [openingFile, setOpeningFile] = useState(null)
   const [fileToDelete, setFileToDelete] = useState(null)
+  const [commentToDelete, setCommentToDelete] = useState(null)
+  const [moderating, setModerating] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -121,6 +162,39 @@ export default function ProjectDetailAdminPage() {
       toast.success('Archivo eliminado definitivamente')
     } catch {
       toast.error('No se pudo eliminar el archivo')
+    }
+  }
+
+  /** Oculta o vuelve a mostrar un comentario, sin borrarlo. */
+  const moderateComment = async (comentario) => {
+    setModerating(comentario.id)
+    try {
+      await adminService.moderateComment(comentario.id, !comentario.activo)
+      setProject(prev => ({
+        ...prev,
+        comentarios: prev.comentarios.map(c =>
+          c.id === comentario.id ? { ...c, activo: !c.activo } : c
+        ),
+      }))
+      toast.success(comentario.activo ? 'Comentario oculto' : 'Comentario visible de nuevo')
+    } catch {
+      toast.error('No se pudo moderar el comentario')
+    } finally {
+      setModerating(null)
+    }
+  }
+
+  /** Borrado permanente: la fila desaparece de la base de datos. */
+  const deleteComment = async (comentario) => {
+    try {
+      await adminService.deleteComment(comentario.id)
+      setProject(prev => ({
+        ...prev,
+        comentarios: prev.comentarios.filter(c => c.id !== comentario.id),
+      }))
+      toast.success('Comentario eliminado definitivamente')
+    } catch {
+      toast.error('No se pudo eliminar el comentario')
     }
   }
 
@@ -373,7 +447,7 @@ export default function ProjectDetailAdminPage() {
                   {comentarios.map(comentario => (
                     <div
                       key={comentario.id}
-                      className={`rounded-md border border-border/50 bg-background/40 px-3 py-2.5 space-y-1 ${
+                      className={`group rounded-md border border-border/50 bg-background/40 px-3 py-2.5 space-y-1 ${
                         comentario.activo ? '' : 'opacity-60'
                       }`}
                     >
@@ -393,9 +467,34 @@ export default function ProjectDetailAdminPage() {
                             </Badge>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(comentario.fecha)}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(comentario.fecha)}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                            title={comentario.activo ? 'Ocultar comentario' : 'Volver a mostrarlo'}
+                            disabled={moderating === comentario.id}
+                            onClick={() => moderateComment(comentario)}
+                          >
+                            {moderating === comentario.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : comentario.activo
+                                ? <EyeOff className="h-3.5 w-3.5" />
+                                : <Eye className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                            title="Eliminar definitivamente"
+                            onClick={() => setCommentToDelete(comentario)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">
                         {comentario.contenido}
@@ -410,54 +509,48 @@ export default function ProjectDetailAdminPage() {
       </Tabs>
 
       {/* Borrado permanente de un archivo */}
-      <Dialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Eliminar archivo</DialogTitle>
-            <DialogDescription>
-              Se borrará del almacenamiento y de la base de datos. No se puede deshacer,
-              y el proyecto de <strong>{project.usuario?.nombre}</strong> dejará de tenerlo.
-            </DialogDescription>
-          </DialogHeader>
+      <HoldDeleteDialog
+        open={!!fileToDelete}
+        onOpenChange={() => setFileToDelete(null)}
+        title="Eliminar archivo"
+        description={`Se borrará del almacenamiento y de la base de datos. No se puede deshacer, y el proyecto de ${project.usuario?.nombre ?? 'su autor'} dejará de tenerlo.`}
+        label="Mantén pulsado para eliminar"
+        onConfirm={() => {
+          deleteFile(fileToDelete)
+          setFileToDelete(null)
+        }}
+      >
+        {fileToDelete && (
+          <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+            <p className="truncate text-sm font-medium">{fileToDelete.nombre_archivo}</p>
+            <p className="text-xs text-muted-foreground">
+              {FILE_CFG[fileToDelete.tipo]?.label ?? fileToDelete.tipo}
+              {' · '}
+              {formatBytes(fileToDelete.tamanio_bytes)}
+            </p>
+          </div>
+        )}
+      </HoldDeleteDialog>
 
-          {fileToDelete && (
-            <div className="space-y-4">
-              <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
-                <p className="truncate text-sm font-medium">{fileToDelete.nombre_archivo}</p>
-                <p className="text-xs text-muted-foreground">
-                  {FILE_CFG[fileToDelete.tipo]?.label ?? fileToDelete.tipo}
-                  {' · '}
-                  {formatBytes(fileToDelete.tamanio_bytes)}
-                </p>
-              </div>
-
-              <HoldButton
-                className="w-full"
-                size="md"
-                radius={8}
-                holdTime={2000}
-                backgroundColor="var(--muted)"
-                fillColor="var(--destructive)"
-                textColor="var(--foreground)"
-                fillTextColor="#ffffff"
-                icon={<Trash2 className="h-4 w-4" />}
-                doneIcon={<Check className="h-4 w-4" />}
-                doneLabel="Eliminado"
-                resetAfter={0}
-                onHold={() => {
-                  const archivo = fileToDelete
-                  setTimeout(() => {
-                    deleteFile(archivo)
-                    setFileToDelete(null)
-                  }, 600)
-                }}
-              >
-                Mantén pulsado para eliminar
-              </HoldButton>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Borrado permanente de un comentario */}
+      <HoldDeleteDialog
+        open={!!commentToDelete}
+        onOpenChange={() => setCommentToDelete(null)}
+        title="Eliminar comentario"
+        description="La retroalimentación desaparece de la base de datos y no queda registro. Si solo quieres retirarla de la vista pública, ocúltala en lugar de eliminarla."
+        label="Mantén pulsado para eliminar"
+        onConfirm={() => {
+          deleteComment(commentToDelete)
+          setCommentToDelete(null)
+        }}
+      >
+        {commentToDelete && (
+          <div className="space-y-1 rounded-md border border-border/50 bg-background/40 px-3 py-2">
+            <p className="text-sm font-medium">{commentToDelete.usuario?.nombre}</p>
+            <p className="text-sm text-muted-foreground">{commentToDelete.contenido}</p>
+          </div>
+        )}
+      </HoldDeleteDialog>
     </div>
   )
 }
