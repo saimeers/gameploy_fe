@@ -1,0 +1,37 @@
+name: CI
+
+# Se ejecuta en cada rama y en los Pull Request hacia main. Vercel construye por
+# su cuenta cada push; este workflow es el que valida pruebas y lint.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests y build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # TODO: quitar continue-on-error cuando se limpien los errores heredados
+      # (variables sin usar y reglas de react-hooks anteriores a este workflow).
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Ejecutar las pruebas
+        run: npm test
+
+      - name: Compilar
+        run: npm run build

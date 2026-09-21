@@ -68,6 +68,19 @@ también en `.env.example` y en esta tabla.
 | `npm run build` | Build de producción en `dist/` |
 | `npm run lint` | ESLint sobre todo el proyecto |
 | `npm run preview` | Sirve localmente el build de producción |
+| `npm test` | Ejecuta la batería de pruebas (Vitest) |
+| `npm run test:watch` | Pruebas en modo vigilancia |
+| `npm run test:coverage` | Pruebas con informe de cobertura |
+
+## Pruebas
+
+Vitest con jsdom y Testing Library. Los archivos de prueba viven junto al código que
+verifican, con la extensión `.test.js` o `.test.jsx`; la configuración está en el bloque
+`test` de `vite.config.js` y el arranque en `src/test/setup.js`, que rellena lo que jsdom
+no implementa (`ResizeObserver` y `matchMedia`).
+
+Las pruebas se escriben desde lo que ve la persona usuaria: se busca por rol, texto o
+etiqueta accesible, nunca por clases de CSS.
 
 ## Estructura del proyecto
 
@@ -179,8 +192,16 @@ docs(readme): document environment variables
 Un cambio incompatible lleva `!` tras el alcance (`feat(router)!: ...`) o un pie
 `BREAKING CHANGE: <descripción>`.
 
+### Integración continua
+
+`.github/workflows/ci.yml` instala, pasa el lint, ejecuta las pruebas y compila en cada push
+y en cada Pull Request hacia `main`. El paso de lint está marcado como no bloqueante hasta
+que se limpien los errores heredados. Vercel construye por su cuenta cada push: publica una
+vista previa por rama y producción desde `main`.
+
 ### Antes de abrir un Pull Request
 
+- `npm test` en verde.
 - `npm run lint` sin errores.
 - `npm run build` termina correctamente.
 - Las pantallas tocadas se revisaron en escritorio y en móvil (RNF-08) y en tema claro y oscuro.
