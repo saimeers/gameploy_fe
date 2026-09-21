@@ -1,10 +1,9 @@
-import { useTheme }   from '@/components/ThemeProvider'
-import Navbar         from '@/pages/home/Navbar'
-import Hero           from '@/pages/home/Hero'
-import About          from '@/pages/home/About'
-import Features       from '@/pages/home/Features'
-import Footer         from '@/pages/home/Footer'
-import Aurora         from '@/components/Aurora'
+import { useTheme }  from '@/components/ThemeProvider'
+import Navbar        from '@/pages/home/Navbar'
+import Hero          from '@/pages/home/Hero'
+import Features      from '@/pages/home/Features'
+import Footer        from '@/pages/home/Footer'
+import Aurora        from '@/components/Aurora'
 
 const AURORA_DARK  = ['#1a0533', '#0f1a40', '#1a0533']
 const AURORA_LIGHT = ['#c9d6ff', '#e2e2e2', '#a8c0ff']
@@ -12,11 +11,10 @@ const AURORA_LIGHT = ['#c9d6ff', '#e2e2e2', '#a8c0ff']
 export default function HomePage() {
   const { theme, setTheme } = useTheme()
   const isDark = theme === 'dark'
-
   const toggleTheme = () => setTheme(isDark ? 'light' : 'dark')
 
   return (
-    <div className="relative min-h-screen overflow-hidden selection:bg-primary/30 selection:text-foreground">
+    <div className="relative min-h-screen selection:bg-primary/30 selection:text-foreground">
       <div className="fixed inset-0 z-[-1]">
         <Aurora
           colorStops={isDark ? AURORA_DARK : AURORA_LIGHT}
@@ -31,7 +29,6 @@ export default function HomePage() {
 
       <Navbar isDark={isDark} toggleTheme={toggleTheme} />
       <Hero />
-      <About />
       <Features />
       <Footer />
     </div>
