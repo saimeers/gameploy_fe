@@ -26,6 +26,10 @@ import AdminDashboard from '@/modules/admin/pages/AdminDashboard'
 import UsersPage from '@/modules/admin/pages/UsersPage'
 import ProjectsAdminPage from '@/modules/admin/pages/ProjectsAdminPage'
 import ProjectDetailAdminPage from '@/modules/admin/pages/ProjectDetailAdminPage'
+import UserProfileAdminPage   from '@/modules/admin/pages/UserProfileAdminPage'
+
+// Perfil (cualquier rol con sesión)
+import ProfilePage from '@/modules/profile/pages/ProfilePage'
 import CatalogAdminPage from '@/modules/admin/pages/CatalogAdminPage'
 
 export const router = createBrowserRouter([
@@ -37,6 +41,18 @@ export const router = createBrowserRouter([
   { path: '/pending', element: <PendingPage /> },
   { path: '/games/:slug', element: <GamePage /> },
   { path: '/games', element: <GamesListPage /> },
+
+  // Perfil — común a los tres roles
+  {
+    element: (
+      <ProtectedRoute allowedRoles={['estudiante', 'docente', 'admin']}>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: '/profile', element: <ProfilePage /> },
+    ],
+  },
 
   // Student
   {
@@ -64,6 +80,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/admin', element: <AdminDashboard /> },
       { path: '/admin/users', element: <UsersPage /> },
+      { path: '/admin/users/:id', element: <UserProfileAdminPage /> },
       { path: '/admin/projects', element: <ProjectsAdminPage /> },
       { path: '/admin/projects/:id', element: <ProjectDetailAdminPage /> },
       { path: '/admin/catalog', element: <CatalogAdminPage /> },

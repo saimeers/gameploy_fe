@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import {
   CheckCircle, XCircle, ChevronLeft, ChevronRight,
-  Search, MoreHorizontal, ShieldCheck, UserX, UserCheck,
+  Search, MoreHorizontal, ShieldCheck, UserX, UserCheck, User,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -204,9 +205,14 @@ export default function UsersPage() {
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <div>
-                        <p className="text-sm font-medium">{user.nombre}</p>
-                        <p className="text-xs text-muted-foreground">{user.correo}</p>
+                      <div className="min-w-0">
+                        <Link
+                          to={`/admin/users/${user.id}`}
+                          className="truncate text-sm font-medium hover:text-primary hover:underline"
+                        >
+                          {user.nombre}
+                        </Link>
+                        <p className="truncate text-xs text-muted-foreground">{user.correo}</p>
                       </div>
                     </div>
                   </TableCell>
@@ -236,6 +242,15 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
+
+                        <DropdownMenuItem asChild>
+                          <Link to={`/admin/users/${user.id}`} className="flex items-center">
+                            <User className="mr-2 h-4 w-4" />
+                            Ver perfil
+                          </Link>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
 
                         {user.rol?.nombre === 'pendiente' ? (
                           <>

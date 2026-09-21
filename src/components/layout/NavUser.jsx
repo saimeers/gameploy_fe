@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { ChevronsUpDown, LogOut, User, Sun, Moon } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -67,9 +68,11 @@ export function NavUser({ user }) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Mi perfil
+            <DropdownMenuItem asChild>
+              <Link to="/profile" className="flex items-center">
+                <User className="mr-2 h-4 w-4" />
+                Mi perfil
+              </Link>
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />

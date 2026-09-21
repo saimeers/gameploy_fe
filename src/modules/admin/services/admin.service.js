@@ -9,6 +9,9 @@ export const adminService = {
   getUsers: (params) =>
     api.get('/users', { params }),
 
+  getUser: (userId) =>
+    api.get(`/admin/users/${userId}`),
+
   updateRole: (userId, rol) =>
     api.patch(`/users/${userId}/role`, { rol }),
 
