@@ -7,6 +7,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { LIMITS } from '@/lib/limits'
 
 /** Configuración que Gameploy necesita del build, resumida en la tarjeta. */
 const REQUIREMENTS = [
@@ -14,6 +15,7 @@ const REQUIREMENTS = [
   { label: 'Resolución', value: '1920 × 1080' },
   { label: 'Plantilla', value: 'PWA' },
   { label: 'Compresión', value: 'Disabled' },
+  { label: 'Tamaño máx.', value: `${LIMITS.archivoMaxMB} MB` },
 ]
 
 // ─── Maquetas del editor de Unity ─────────────────────────────────────────────
@@ -170,6 +172,18 @@ function BuildMock() {
   )
 }
 
+function SizeMock() {
+  return (
+    <MockWindow title="Inspector › Import Settings">
+      <MockSection>Textura</MockSection>
+      <MockField label="Max Size" value="1024 ▾" highlight />
+      <MockCheck label="Use Crunch Compression" checked highlight />
+      <MockSection>Audio</MockSection>
+      <MockField label="Compression Format" value="Vorbis ▾" highlight />
+    </MockWindow>
+  )
+}
+
 const ZIP_TREE = [
   { name: 'index.html',           depth: 1 },
   { name: 'manifest.webmanifest', depth: 1 },
@@ -273,8 +287,23 @@ const STEPS = [
         en macOS, clic derecho → <b>Comprimir</b>. Ese .zip es el que subes aquí.
       </>
     ),
-    note: 'Al subirlo, Gameploy revisa la estructura y te dice si falta algo o si el build está comprimido.',
+    note: `Al subirlo, Gameploy revisa la estructura y te dice si falta algo o si el build está comprimido. El .zip puede pesar hasta ${LIMITS.archivoMaxMB} MB.`,
     mock: ZipMock,
+  },
+  {
+    title: `Si el .zip pasa de ${LIMITS.archivoMaxMB} MB`,
+    body: (
+      <>
+        Por ahora Gameploy acepta archivos de hasta <b>{LIMITS.archivoMaxMB} MB</b>: el servidor que
+        protege la plataforma no admite subidas más grandes. Para reducir el build: en las{' '}
+        <b>texturas</b>, baja <b>Max Size</b> (1024 suele bastar) y activa{' '}
+        <b>Use Crunch Compression</b>; en el <b>audio</b>, usa <b>Compression Format: Vorbis</b>; en{' '}
+        <b>Player Settings → Other Settings</b>, pon <b>Managed Stripping Level: High</b>; y quita de{' '}
+        <b>Build Profiles</b> las escenas que no uses.
+      </>
+    ),
+    note: 'Tras el build, el Editor Log (Console → ⋮ → Open Editor Log) lista qué assets ocupan más.',
+    mock: SizeMock,
   },
 ]
 
@@ -300,7 +329,11 @@ function GuideDialog({ open, onOpenChange }) {
         </div>
 
         {/* Progreso: cada segmento lleva a su paso */}
-        <ol className="grid grid-cols-6 gap-1.5 px-6 pt-4" aria-label="Pasos de la guía">
+        <ol
+          className="grid gap-1.5 px-6 pt-4"
+          style={{ gridTemplateColumns: `repeat(${STEPS.length}, minmax(0, 1fr))` }}
+          aria-label="Pasos de la guía"
+        >
           {STEPS.map((s, i) => (
             <li key={s.title}>
               <button
@@ -381,7 +414,7 @@ export default function UnityWebGLGuide() {
         </Button>
       </div>
 
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {REQUIREMENTS.map(r => (
           <div key={r.label} className="rounded-md border border-border/50 bg-background/60 px-2.5 py-1.5">
             <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.label}</dt>

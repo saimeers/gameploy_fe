@@ -71,6 +71,23 @@ function isVersionGreater(newStr, latestStr) {
 }
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
+const MAX_UPLOAD_BYTES = LIMITS.archivoMaxMB * 1024 * 1024
+
+/** Aviso de un archivo que supera el máximo, con el porqué y qué hacer. */
+function warnTooLarge(file, isWebGL) {
+  toast.error(
+    `${file.name} pesa ${formatBytes(file.size)} y el máximo es ${LIMITS.archivoMaxMB} MB`,
+    {
+      description: `Es una limitación actual del sistema: el servidor acepta subidas de hasta 100 MB. ${
+        isWebGL
+          ? 'Reduce el tamaño del build (mira el último paso de la guía) e inténtalo de nuevo.'
+          : 'Reduce la imagen e inténtalo de nuevo.'
+      }`,
+      duration: 10000,
+    },
+  )
+}
+
 function UploadZone({ versionId, versionLabel, projectId, projectName, fileType, existingFiles = [], onFileAdded, onFileDeleted }) {
   const [progress, setProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
@@ -87,9 +104,9 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
   const isCaptura = fileType === 'captura'
 
   const cfg = {
-    juego_webgl: { label: 'Juego WebGL', icon: FileArchive, accept: '.zip', desc: 'Archivo .zip con el build Web de Unity (index.html, Build y TemplateData)' },
-    portada: { label: 'Portada', icon: Image, accept: 'image/*', desc: 'Una imagen de presentación (PNG, JPG)' },
-    captura: { label: 'Capturas', icon: Camera, accept: 'image/*', desc: 'Capturas de pantalla — puedes subir múltiples' },
+    juego_webgl: { label: 'Juego WebGL', icon: FileArchive, accept: '.zip', desc: `Archivo .zip con el build Web de Unity (index.html, Build y TemplateData), de hasta ${LIMITS.archivoMaxMB} MB` },
+    portada: { label: 'Portada', icon: Image, accept: 'image/*', desc: `Una imagen de presentación (PNG, JPG), de hasta ${LIMITS.archivoMaxMB} MB` },
+    captura: { label: 'Capturas', icon: Camera, accept: 'image/*', desc: `Capturas de pantalla — puedes subir múltiples, de hasta ${LIMITS.archivoMaxMB} MB cada una` },
   }[fileType]
 
   const handleFile = async (e) => {
@@ -98,6 +115,12 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
     if (!validFiles.length) return
 
     for (const file of validFiles) {
+      // Antes de abrirlo: un archivo demasiado grande no llegaría al servidor.
+      if (file.size > MAX_UPLOAD_BYTES) {
+        warnTooLarge(file, isWebGL)
+        continue
+      }
+
       if (isWebGL) {
         setValidating(true)
         try {
@@ -135,7 +158,8 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
         onFileAdded(res.data.data)
         toast.success(`${isCaptura ? 'Captura' : cfg.label} subida`)
       } catch (err) {
-        toast.error(err.response?.data?.message ?? 'Error al subir')
+        if (err.response?.status === 413) warnTooLarge(file, isWebGL)
+        else toast.error(err.response?.data?.message ?? 'Error al subir')
       } finally {
         setUploading(false)
         setProgress(0)

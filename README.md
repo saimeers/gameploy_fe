@@ -152,7 +152,9 @@ Tras iniciar sesión, `useAuth` redirige según el rol devuelto por la API.
    `.loader.js`, `.framework.js`, `.data` y `.wasm`. Un build comprimido (`.gz`, `.br`,
    `.unityweb`) se rechaza, porque los archivos se sirven sin la cabecera `Content-Encoding` y el
    navegador no podría cargarlo; sin la plantilla PWA solo se avisa.
-   Máximo 500 MB.
+   Máximo **95 MB** por archivo (`LIMITS.archivoMaxMB`), igual que en la API: la API está detrás del
+   proxy de Cloudflare, que rechaza subidas de más de 100 MB. Un archivo mayor no se sube y el
+   aviso explica el porqué; el último paso de la guía de Unity dice cómo reducir el build.
 3. Añade portada, capturas, instrucciones y los controles del juego.
 4. Publica el proyecto y elige su visibilidad: `publico` (aparece en el catálogo), `por_enlace`
    (accesible solo con la URL) o `privado`.

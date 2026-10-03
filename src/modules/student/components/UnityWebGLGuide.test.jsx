@@ -11,9 +11,10 @@ describe('UnityWebGLGuide', () => {
     expect(screen.getByText('1920 × 1080')).toBeInTheDocument()
     expect(screen.getByText('PWA')).toBeInTheDocument()
     expect(screen.getByText('Disabled')).toBeInTheDocument()
+    expect(screen.getByText('95 MB')).toBeInTheDocument()
   })
 
-  it('recorre la guía paso a paso hasta comprimir el .zip', async () => {
+  it('recorre la guía paso a paso hasta comprimir el .zip y cómo reducirlo', async () => {
     const user = userEvent.setup()
     render(<UnityWebGLGuide />)
 
@@ -23,9 +24,13 @@ describe('UnityWebGLGuide', () => {
     for (let i = 0; i < 5; i++) {
       await user.click(screen.getByRole('button', { name: /Siguiente/ }))
     }
-
     expect(screen.getByRole('heading', { name: 'Comprímelo en un .zip' })).toBeInTheDocument()
-    expect(screen.getByText('Paso 6 de 6')).toBeInTheDocument()
+    expect(screen.getByText(/El \.zip puede pesar hasta 95 MB/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Siguiente/ }))
+    expect(screen.getByRole('heading', { name: 'Si el .zip pasa de 95 MB' })).toBeInTheDocument()
+    expect(screen.getByText('Paso 7 de 7')).toBeInTheDocument()
+    expect(screen.getByText('Use Crunch Compression', { selector: 'div' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Siguiente/ })).not.toBeInTheDocument()
   })
 
@@ -49,6 +54,6 @@ describe('UnityWebGLGuide', () => {
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: /Guía paso a paso/ }))
 
-    expect(screen.getByText('Paso 1 de 6')).toBeInTheDocument()
+    expect(screen.getByText('Paso 1 de 7')).toBeInTheDocument()
   })
 })
