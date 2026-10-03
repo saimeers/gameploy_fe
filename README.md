@@ -88,7 +88,10 @@ etiqueta accesible, nunca por clases de CSS.
 src/
 ├── router/index.jsx     Definición de todas las rutas
 ├── components/
-│   ├── game/            GamePlayer: reproductor de los builds Unity WebGL
+│   ├── game/            GamePlayer y useGameLoading: reproductor de los builds Unity WebGL
+│   ├── files/           Vistas previas de archivos (imágenes, contenido del .zip, probar versión)
+│   ├── visits/          VisitOrigins: origen de las visitas por país y ciudad
+│   ├── HoldConfirmDialog  Confirmación de acciones destructivas manteniendo pulsado
 │   ├── layout/          DashboardLayout, AppSidebar, NavMain, NavUser
 │   ├── ui/              Componentes de shadcn/ui (TypeScript)
 │   ├── ProtectedRoute   Guarda de rutas por rol
@@ -158,6 +161,26 @@ Tras iniciar sesión, `useAuth` redirige según el rol devuelto por la API.
    (`components/game/GamePlayer`) es 16:9, muestra la portada hasta que se pulsa jugar y permite
    reiniciar, abrir el juego en otra pestaña y ponerlo en pantalla completa; donde no existe la
    Fullscreen API (Safari en iPhone) cubre la ventana con un modo inmersivo.
+
+   Mientras carga muestra el progreso real de Unity: la API inyecta en el `index.html` del juego un
+   script que envía con `postMessage` los mensajes `boot`, `progress` (0 a 1), `ready` y `error`
+   (fuente `gameploy-player`), y `useGameLoading` los convierte en porcentaje de descarga, fase de
+   inicio y errores con botón de reintentar. Con una API sin ese script, el juego se da por listo
+   cuando carga el iframe.
+6. El estudiante puede cambiar el enlace (`SlugEditor`, en la pestaña Información). El slug
+   anterior sigue funcionando: la ficha pública reemplaza en la URL un slug viejo por el actual sin
+   volver a pedir el proyecto, para no contar la visita dos veces.
+7. Cada visita guarda país, región y ciudad (la API los calcula con una base offline y no guarda la
+   IP). `VisitOrigins` los muestra en el panel del admin, en el del estudiante y en la pestaña
+   Visitas del detalle de cada proyecto.
+
+## Acciones destructivas
+
+Borrar o desactivar algo (proyectos, archivos, comentarios, controles, usuarios, categorías y
+etiquetas) pide mantener pulsado un botón: `HoldConfirmDialog`, sobre el `HoldButton` de React Bits.
+Rojo para borrar, ámbar para desactivar; activar es un clic. Las categorías y etiquetas se desactivan
+en vez de borrarse: los proyectos que las usan las conservan, y solo se puede eliminar lo que ningún
+proyecto usa.
 
 ## Despliegue
 

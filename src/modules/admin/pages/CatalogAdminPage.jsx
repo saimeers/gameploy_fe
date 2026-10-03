@@ -15,6 +15,10 @@ import { cn } from '@/lib/utils'
 import api from '@/services/api'
 import { LIMITS } from '@/lib/limits'
 
+/** "Ningún proyecto la usa", "En 1 proyecto", "En 3 proyectos". */
+const usageLabel = (n) =>
+    n === 0 ? 'Ningún proyecto la usa' : `En ${n} proyecto${n !== 1 ? 's' : ''}`
+
 function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, setStatusFn, deleteFn }) {
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
@@ -142,7 +146,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, set
                                         <p className="text-xs text-muted-foreground">{item.descripcion}</p>
                                     )}
                                     <p className="text-xs text-muted-foreground">
-                                        {usage === 0 ? 'Ningún proyecto la usa' : `En ${usage} proyecto${usage !== 1 ? 's' : ''}`}
+                                        {usageLabel(usage)}
                                     </p>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-1">
@@ -240,7 +244,7 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, set
                     <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
                         <p className="text-sm font-medium">{toDeactivate.nombre}</p>
                         <p className="text-xs text-muted-foreground">
-                            En {toDeactivate._count?.proyectos ?? 0} proyecto(s)
+                            {usageLabel(toDeactivate._count?.proyectos ?? 0)}
                         </p>
                     </div>
                 )}
