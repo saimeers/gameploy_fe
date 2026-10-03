@@ -4,10 +4,7 @@ import { Plus, FolderOpen, Eye, MessageSquare, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import ProjectCard from '../components/ProjectCard'
 import { studentService } from '../services/student.service'
 import { useAuthStore } from '@/store/authStore'
@@ -18,7 +15,6 @@ export default function StudentDashboard() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [toDelete, setToDelete] = useState(null)
-  const [deleting, setDeleting] = useState(false)
 
   const loadProjects = useCallback(
     () => studentService.getMyProjects({ limit: 50 }).then(res => res.data.data),
@@ -47,17 +43,14 @@ export default function StudentDashboard() {
     }
   }
 
-  const handleDelete = async () => {
-    setDeleting(true)
+  const handleDelete = async (project) => {
+    setToDelete(null)
     try {
-      await studentService.deleteProject(toDelete.id)
+      await studentService.deleteProject(project.id)
       toast.success('Proyecto eliminado')
       refreshProjects()
     } catch {
       toast.error('Error al eliminar el proyecto')
-    } finally {
-      setDeleting(false)
-      setToDelete(null)
     }
   }
 
@@ -150,28 +143,21 @@ export default function StudentDashboard() {
       )}
 
       {/* Delete confirm */}
-      <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <AlertDialogContent className="bg-background text-popover-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar proyecto</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de eliminar <strong>{toDelete?.nombre}</strong>?
-              Se eliminarán todos los archivos y versiones asociados. Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <HoldConfirmDialog
+        open={!!toDelete}
+        onOpenChange={() => setToDelete(null)}
+        title="Eliminar proyecto"
+        description="Se borran todas sus versiones y archivos, los controles, los comentarios recibidos y las visitas. No se puede deshacer."
+        label="Mantén pulsado para eliminar"
+        onConfirm={() => handleDelete(toDelete)}
+      >
+        {toDelete && (
+          <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+            <p className="truncate text-sm font-medium">{toDelete.nombre}</p>
+            <p className="text-xs text-muted-foreground">/games/{toDelete.slug}</p>
+          </div>
+        )}
+      </HoldConfirmDialog>
     </div>
   )
 }

@@ -14,10 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
   Dialog, DialogContent,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import { studentService } from '../../services/student.service'
 import { LIMITS }         from '@/lib/limits'
 import { inspectWebGLZip } from '../../webglBuild'
@@ -83,7 +80,6 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
   const [playing, setPlaying] = useState(false)
   const [previews, setPreviews] = useState({})
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [deleteInput, setDeleteInput] = useState('')
   const inputRef = useRef()
 
   const isWebGL = fileType === 'juego_webgl'
@@ -163,19 +159,18 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
     e.target.value = ''
   }
 
-  const confirmDelete = async () => {
-    if (deleteInput !== 'eliminar') return
+  const confirmDelete = async (file) => {
+    setDeleteConfirm(null)
     try {
-      await studentService.deleteFile(projectId, versionId, deleteConfirm.id)
-      onFileDeleted(deleteConfirm.id)
+      await studentService.deleteFile(projectId, versionId, file.id)
+      onFileDeleted(file.id)
       // Revoke object URL if it was local
-      if (previews[deleteConfirm.id]?.startsWith('blob:')) {
-        URL.revokeObjectURL(previews[deleteConfirm.id])
+      if (previews[file.id]?.startsWith('blob:')) {
+        URL.revokeObjectURL(previews[file.id])
       }
-      setPreviews(prev => { const n = { ...prev }; delete n[deleteConfirm.id]; return n })
+      setPreviews(prev => { const n = { ...prev }; delete n[file.id]; return n })
       toast.success('Archivo eliminado')
     } catch { toast.error('Error al eliminar') }
-    finally { setDeleteConfirm(null); setDeleteInput('') }
   }
 
   const busy = uploading || validating
@@ -311,33 +306,21 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
       </Dialog>
 
       {/* Delete confirm */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => { setDeleteConfirm(null); setDeleteInput('') }}>
-        <AlertDialogContent className="bg-background text-popover-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar archivo permanentemente</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Escribe <strong>eliminar</strong> para confirmar.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Input
-            className="mt-2"
-            placeholder="eliminar"
-            maxLength={LIMITS.confirmacion}
-            value={deleteInput}
-            onChange={e => setDeleteInput(e.target.value)}
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteInput !== 'eliminar'}
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar permanentemente
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <HoldConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={() => setDeleteConfirm(null)}
+        title="Eliminar archivo permanentemente"
+        description="Esta acción no se puede deshacer. Si otra versión heredó este archivo, la otra versión lo conserva."
+        label="Mantén pulsado para eliminar"
+        onConfirm={() => confirmDelete(deleteConfirm)}
+      >
+        {deleteConfirm && (
+          <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+            <p className="truncate text-sm font-medium">{deleteConfirm.nombre_archivo}</p>
+            <FileMeta archivo={deleteConfirm} />
+          </div>
+        )}
+      </HoldConfirmDialog>
     </div>
   )
 }

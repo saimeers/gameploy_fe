@@ -18,10 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import { adminService } from '../services/admin.service'
 import { LIMITS }       from '@/lib/limits'
 
@@ -86,15 +83,15 @@ export default function ProjectsAdminPage() {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (project) => {
+    setToDelete(null)
     try {
-      await adminService.deleteProject(toDelete.id)
+      await adminService.deleteProject(project.id)
       toast.success('Proyecto eliminado')
       refreshProjects()
     } catch {
       toast.error('Error al eliminar')
     }
-    setToDelete(null)
   }
 
   const totalPages = Math.ceil(total / limit)
@@ -273,26 +270,23 @@ export default function ProjectsAdminPage() {
       </div>
 
       {/* Delete confirm */}
-      <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <AlertDialogContent className="bg-background text-popover-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar proyecto</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de eliminar <strong>{toDelete?.nombre}</strong>?
-              Esta acción no se puede deshacer y eliminará todos los archivos asociados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <HoldConfirmDialog
+        open={!!toDelete}
+        onOpenChange={() => setToDelete(null)}
+        title="Eliminar proyecto"
+        description="Se borran el proyecto, sus versiones, controles, comentarios y visitas, y sus archivos del almacenamiento. No se puede deshacer."
+        label="Mantén pulsado para eliminar"
+        onConfirm={() => handleDelete(toDelete)}
+      >
+        {toDelete && (
+          <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+            <p className="truncate text-sm font-medium">{toDelete.nombre}</p>
+            <p className="text-xs text-muted-foreground">
+              {toDelete.usuario?.nombre ?? 'Autor desconocido'} · /games/{toDelete.slug}
+            </p>
+          </div>
+        )}
+      </HoldConfirmDialog>
     </div>
   )
 }

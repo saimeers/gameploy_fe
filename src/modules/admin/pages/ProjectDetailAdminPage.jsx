@@ -4,18 +4,15 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, Globe, Lock, Link2, Loader2, ExternalLink,
   Star, Eye, MessageSquare, FileArchive, Image, Camera,
-  Download, Gamepad2, EyeOff, Tag, Trash2, Check, Play, ListTree,
+  Download, Gamepad2, EyeOff, Tag, Trash2, Play, ListTree,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge }  from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
 import { adminService } from '../services/admin.service'
 import ControlsViewer   from '@/components/controls/ControlsViewer'
-import HoldButton       from '@/components/HoldButton'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import VisitOrigins     from '@/components/visits/VisitOrigins'
 import BuildContents    from '@/components/files/BuildContents'
 import { BuildPreviewDialog, FileMeta, ImageThumb } from '@/components/files/FilePreviews'
@@ -57,45 +54,6 @@ function Stat({ icon: Icon, value, label }) {
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
     </div>
-  )
-}
-
-/**
- * Confirmación de una acción irreversible: exige mantener pulsado el botón,
- * y deja ver el estado "Eliminado" un instante antes de cerrarse.
- */
-function HoldDeleteDialog({ open, onOpenChange, title, description, label, onConfirm, children }) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {children}
-
-          <HoldButton
-            className="w-full"
-            size="md"
-            radius={8}
-            holdTime={2000}
-            backgroundColor="var(--muted)"
-            fillColor="var(--destructive)"
-            textColor="var(--foreground)"
-            fillTextColor="#ffffff"
-            icon={<Trash2 className="h-4 w-4" />}
-            doneIcon={<Check className="h-4 w-4" />}
-            doneLabel="Eliminado"
-            resetAfter={0}
-            onHold={() => setTimeout(onConfirm, 600)}
-          >
-            {label}
-          </HoldButton>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -626,7 +584,7 @@ export default function ProjectDetailAdminPage() {
       </Tabs>
 
       {/* Borrado permanente de un archivo */}
-      <HoldDeleteDialog
+      <HoldConfirmDialog
         open={!!fileToDelete}
         onOpenChange={() => setFileToDelete(null)}
         title="Eliminar archivo"
@@ -647,10 +605,10 @@ export default function ProjectDetailAdminPage() {
             </p>
           </div>
         )}
-      </HoldDeleteDialog>
+      </HoldConfirmDialog>
 
       {/* Borrado permanente de un comentario */}
-      <HoldDeleteDialog
+      <HoldConfirmDialog
         open={!!commentToDelete}
         onOpenChange={() => setCommentToDelete(null)}
         title="Eliminar comentario"
@@ -667,7 +625,7 @@ export default function ProjectDetailAdminPage() {
             <p className="text-sm text-muted-foreground">{commentToDelete.contenido}</p>
           </div>
         )}
-      </HoldDeleteDialog>
+      </HoldConfirmDialog>
     </div>
   )
 }
