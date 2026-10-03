@@ -6,6 +6,7 @@ import {
     Loader2, Gamepad2, User, Calendar, Tag,
     Star,
     Eye,
+    ArrowLeft,
 } from 'lucide-react'
 import {
     Dialog,
@@ -18,61 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import api from '@/services/api'
 import ControlsViewer from '@/components/controls/ControlsViewer'
-
-function GamePlayer({ archivos, projectName, projectId, versionId }) {
-    const [started, setStarted] = useState(false)
-
-    // Se deriva de las props en el render: no hace falta estado ni efecto.
-    const webglFile = archivos?.find(f => f.tipo === 'juego_webgl')
-    const error = webglFile ? null : 'No hay archivos del juego disponibles.'
-
-    if (error) return (
-        <div className="flex items-center justify-center h-64 rounded-xl border border-border/50 bg-card/40">
-            <div className="text-center space-y-2">
-                <Gamepad2 className="h-8 w-8 text-muted-foreground/40 mx-auto" />
-                <p className="text-sm text-muted-foreground">{error}</p>
-            </div>
-        </div>
-    )
-
-    const iframeSrc =
-        `${import.meta.env.VITE_API_URL}/play/${projectId}/${versionId}/index.html`
-
-    return (
-        <div className="space-y-3">
-            {!started ? (
-                <div className="flex flex-col items-center justify-center h-[500px] rounded-xl border border-border/50 bg-gradient-to-br from-primary/5 to-accent/10 gap-4">
-                    <div className="rounded-full bg-primary/10 p-6">
-                        <Gamepad2 className="h-12 w-12 text-primary" />
-                    </div>
-
-                    <div className="text-center space-y-1">
-                        <p className="font-semibold">{projectName}</p>
-                        <p className="text-sm text-muted-foreground">
-                            Haz click para iniciar el juego
-                        </p>
-                    </div>
-
-                    <Button onClick={() => setStarted(true)} className="gap-2">
-                        <Gamepad2 className="h-4 w-4" />
-                        Jugar ahora
-                    </Button>
-                </div>
-            ) : (
-                <div className="relative rounded-xl overflow-hidden border border-border/50">
-                    <iframe
-                        src={iframeSrc}
-                        className="w-full"
-                        style={{ height: '600px' }}
-                        allow="fullscreen"
-                        allowFullScreen
-                        title={projectName}
-                    />
-                </div>
-            )}
-        </div>
-    )
-}
+import GamePlayer from '@/components/game/GamePlayer'
 
 export default function GamePage() {
     const { slug } = useParams()
@@ -139,66 +86,75 @@ export default function GamePage() {
 
     const controles = project.controles ?? []
 
-    const capturas = activeVersion?.archivos?.filter(f => f.tipo === 'captura') ?? []
+    const archivos = activeVersion?.archivos ?? []
+    const capturas = archivos.filter(f => f.tipo === 'captura')
+    const portada = archivos.find(f => f.tipo === 'portada')
+    const hasGame = archivos.some(f => f.tipo === 'juego_webgl')
+    const gameSrc = hasGame
+        ? `${import.meta.env.VITE_API_URL}/play/${project.id}/${activeVersion.id}/index.html`
+        : null
     const visitCount = project?._count?.visitas ?? 0
+
+    const calificaciones = (project.comentarios ?? [])
+        .map(c => c.calificacion)
+        .filter(Boolean)
+    const promedio = calificaciones.length
+        ? calificaciones.reduce((a, b) => a + b, 0) / calificaciones.length
+        : null
 
     return (
         <div className="min-h-svh bg-background">
 
             <Navbar isDark={isDark} toggleTheme={() => setTheme(isDark ? 'light' : 'dark')} />
 
-            <div className="container mx-auto px-6 pt-24 pb-8 max-w-5xl space-y-8">
+            <div className="container mx-auto px-4 sm:px-6 pt-24 pb-12 max-w-6xl space-y-8">
 
-                {/* Header */}
-                <div className="space-y-4">
-                    {/* Visitas */}
+                {/* Encabezado */}
+                <header className="space-y-4">
+                    <Link
+                        to="/games"
+                        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Catálogo de juegos
+                    </Link>
 
-                    <div className="flex flex-wrap items-start gap-3">
-                        <div className="flex-1 min-w-0 space-y-3">
+                    <div className="space-y-3">
+                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                            {project.nombre}
+                        </h1>
 
-                            {/* Título */}
-                            <div className="space-y-2">
-                                <h1 className="text-3xl font-bold tracking-tight">
-                                    {project.nombre}
-                                </h1>
-
-                                {/* Metadata */}
-                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-
-                                    <div className="flex items-center gap-1.5">
-                                        <User className="h-3.5 w-3.5" />
-                                        <span>{project.usuario?.nombre}</span>
-                                    </div>
-
-                                    {project.fecha_publicacion && (
-                                        <div className="flex items-center gap-1.5">
-                                            <Calendar className="h-3.5 w-3.5" />
-                                            <span>
-                                                {new Date(project.fecha_publicacion)
-                                                    .toLocaleDateString('es-CO')}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {activeVersion && (
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="font-mono text-xs">
-                                                v{activeVersion.numero_version}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Views */}
-                                    <div className="flex items-center gap-1.5 rounded-full border border-border/50 bg-muted/30 px-2.5 py-1 text-xs">
-                                        <Eye className="h-3.5 w-3.5" />
-                                        <span>
-                                            {visitCount} visita{visitCount !== 1 ? 's' : ''}
-                                        </span>
-                                    </div>
-                                </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                                <User className="h-3.5 w-3.5" />
+                                <span>{project.usuario?.nombre}</span>
                             </div>
 
-                            {/* Tags */}
+                            {project.fecha_publicacion && (
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    <span>
+                                        {new Date(project.fecha_publicacion)
+                                            .toLocaleDateString('es-CO')}
+                                    </span>
+                                </div>
+                            )}
+
+                            {activeVersion && (
+                                <span className="font-mono text-xs">
+                                    v{activeVersion.numero_version}
+                                </span>
+                            )}
+
+                            <div className="flex items-center gap-1.5 rounded-full border border-border/50 bg-muted/30 px-2.5 py-1 text-xs">
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>
+                                    {visitCount} visita{visitCount !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        </div>
+
+                        {(project.categoria || project.etiquetas?.length > 0) && (
                             <div className="flex flex-wrap gap-2">
                                 {project.categoria && (
                                     <Badge variant="outline" className="text-xs">
@@ -217,70 +173,36 @@ export default function GamePage() {
                                     </Badge>
                                 ))}
                             </div>
-                        </div>
+                        )}
                     </div>
+                </header>
 
-                    {project.descripcion && (
-                        <p className="text-muted-foreground leading-relaxed max-w-2xl">{project.descripcion}</p>
-                    )}
-
-                    {/* Capturas */}
-                    {capturas.length > 0 && (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-medium">Capturas</h3>
-                                <p className="text-xs text-muted-foreground">
-                                    Click para ampliar
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {capturas.map(cap => mediaUrls[cap.id] && (
-                                    <button
-                                        key={cap.id}
-                                        onClick={() => setSelectedImage(mediaUrls[cap.id])}
-                                        className="group relative overflow-hidden rounded-xl border border-border/50"
-                                    >
-                                        <img
-                                            src={mediaUrls[cap.id]}
-                                            alt="captura"
-                                            className="
-                            w-full h-32 md:h-40 object-cover
-                            transition-transform duration-300
-                            group-hover:scale-105
-                        "
-                                        />
-
-                                        {/* Overlay */}
-                                        <div className="
-                        absolute inset-0 bg-black/0
-                        group-hover:bg-black/30
-                        transition-colors duration-300
-                        flex items-center justify-center
-                    ">
-                                            <Eye className="
-                            h-5 w-5 text-white opacity-0
-                            group-hover:opacity-100
-                            transition-opacity
-                        " />
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Game player */}
+                {/* Reproductor */}
                 <GamePlayer
-                    archivos={activeVersion?.archivos}
-                    projectName={project.nombre}
-                    projectId={project.id}
-                    versionId={activeVersion?.id}
+                    src={gameSrc}
+                    title={project.nombre}
+                    version={activeVersion?.numero_version}
+                    coverUrl={portada ? mediaUrls[portada.id] : null}
                 />
 
+                {/* min-w-0: el diagrama de teclado es más ancho que un móvil y
+                    hace scroll dentro de su tarjeta; sin él, ensancharía la columna. */}
                 <div className="grid gap-6 lg:grid-cols-3">
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="min-w-0 lg:col-span-2 space-y-6">
+
+                        {/* Descripción */}
+                        {project.descripcion && (
+                            <Card className="border-border/50 bg-card/60">
+                                <CardHeader>
+                                    <CardTitle className="text-sm">Acerca del juego</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                                        {project.descripcion}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* Instrucciones */}
                         {project.instrucciones && (
@@ -308,7 +230,40 @@ export default function GamePage() {
                             </Card>
                         )}
 
-                        {/* Comments */}
+                        {/* Capturas */}
+                        {capturas.length > 0 && (
+                            <Card className="border-border/50 bg-card/60">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-sm">Capturas</CardTitle>
+                                        <p className="text-xs text-muted-foreground">Click para ampliar</p>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {capturas.map(cap => mediaUrls[cap.id] && (
+                                            <button
+                                                key={cap.id}
+                                                type="button"
+                                                onClick={() => setSelectedImage(mediaUrls[cap.id])}
+                                                className="group relative overflow-hidden rounded-lg border border-border/50"
+                                            >
+                                                <img
+                                                    src={mediaUrls[cap.id]}
+                                                    alt="captura"
+                                                    className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                />
+                                                <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/30">
+                                                    <Eye className="h-5 w-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Evaluaciones */}
                         {project.comentarios?.length > 0 && (
                             <Card className="border-border/50 bg-card/60">
                                 <CardHeader>
@@ -345,8 +300,8 @@ export default function GamePage() {
                         )}
                     </div>
 
-                    {/* Sidebar info */}
-                    <div className="space-y-4">
+                    {/* Información */}
+                    <aside className="min-w-0 space-y-4">
                         <Card className="border-border/50 bg-card/60">
                             <CardHeader>
                                 <CardTitle className="text-sm">Información</CardTitle>
@@ -358,6 +313,16 @@ export default function GamePage() {
                                         Publicado
                                     </Badge>
                                 </div>
+                                {promedio !== null && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Valoración</span>
+                                        <span className="flex items-center gap-1">
+                                            <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                                            {promedio.toFixed(1)}
+                                            <span className="text-xs text-muted-foreground">({calificaciones.length})</span>
+                                        </span>
+                                    </div>
+                                )}
                                 {project.categoria && (
                                     <div className="flex justify-between">
                                         <span className="text-muted-foreground">Categoría</span>
@@ -385,11 +350,11 @@ export default function GamePage() {
                                 </p>
                             </CardContent>
                         </Card>
-                    </div>
+                    </aside>
                 </div>
             </div>
             <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-                <DialogContent className="bg-background text-popover-foreground">
+                <DialogContent className="bg-background text-popover-foreground sm:max-w-5xl p-2">
                     {selectedImage && (
                         <img
                             src={selectedImage}
