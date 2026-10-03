@@ -11,6 +11,7 @@ import {
 import ProjectCard from '../components/ProjectCard'
 import { studentService } from '../services/student.service'
 import { useAuthStore } from '@/store/authStore'
+import VisitOrigins from '@/components/visits/VisitOrigins'
 
 export default function StudentDashboard() {
   const user = useAuthStore(s => s.user)
@@ -21,6 +22,11 @@ export default function StudentDashboard() {
 
   const loadProjects = useCallback(
     () => studentService.getMyProjects({ limit: 50 }).then(res => res.data.data),
+    []
+  )
+
+  const loadVisits = useCallback(
+    (days) => studentService.getMyVisits(days).then(res => res.data.data),
     []
   )
 
@@ -100,6 +106,13 @@ export default function StudentDashboard() {
           </Card>
         ))}
       </div>
+
+      {published > 0 && (
+        <VisitOrigins
+          load={loadVisits}
+          description="Visitas a todos tus juegos, según la conexión de cada visitante. No se guarda su IP."
+        />
+      )}
 
       {/* Projects grid */}
       {loading ? (

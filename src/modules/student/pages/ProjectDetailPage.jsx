@@ -16,6 +16,7 @@ import { studentService }   from '../services/student.service'
 import ProjectInfoTab       from '../components/tabs/ProjectInfoTab'
 import ProjectControlsTab   from '../components/tabs/ProjectControlsTab'
 import ProjectVersionsTab   from '../components/tabs/ProjectVersionsTab'
+import VisitOrigins         from '@/components/visits/VisitOrigins'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -60,6 +61,11 @@ export default function ProjectDetailPage() {
       toast.error('Error al cargar el proyecto')
     }
   }
+
+  const loadVisits = useCallback(
+    (days) => studentService.getProjectVisits(id, days).then(res => res.data.data),
+    [id]
+  )
 
   const handlePublish = async () => {
     setPublishing(true)
@@ -156,6 +162,7 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="info">Información</TabsTrigger>
           <TabsTrigger value="controles">Controles</TabsTrigger>
           <TabsTrigger value="versiones">Versiones y archivos</TabsTrigger>
+          <TabsTrigger value="visitas">Visitas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info" className="mt-4">
@@ -168,6 +175,10 @@ export default function ProjectDetailPage() {
 
         <TabsContent value="versiones" className="mt-4">
           <ProjectVersionsTab projectId={project.id} />
+        </TabsContent>
+
+        <TabsContent value="visitas" className="mt-4">
+          <VisitOrigins load={loadVisits} />
         </TabsContent>
       </Tabs>
 

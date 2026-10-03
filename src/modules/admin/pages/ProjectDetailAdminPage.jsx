@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -16,6 +16,7 @@ import {
 import { adminService } from '../services/admin.service'
 import ControlsViewer   from '@/components/controls/ControlsViewer'
 import HoldButton       from '@/components/HoldButton'
+import VisitOrigins     from '@/components/visits/VisitOrigins'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -135,6 +136,11 @@ export default function ProjectDetailAdminPage() {
     fetchProject()
     return () => { cancelled = true }
   }, [id, navigate])
+
+  const loadVisits = useCallback(
+    (days) => adminService.getProjectVisits(id, days).then(res => res.data.data),
+    [id]
+  )
 
   const openFile = async (archivo) => {
     setOpeningFile(archivo.id)
@@ -280,6 +286,7 @@ export default function ProjectDetailAdminPage() {
           <TabsTrigger value="controles">Controles</TabsTrigger>
           <TabsTrigger value="versiones">Versiones y archivos</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
+          <TabsTrigger value="visitas">Visitas</TabsTrigger>
         </TabsList>
 
         {/* ── Información ── */}
@@ -429,6 +436,11 @@ export default function ProjectDetailAdminPage() {
               </Card>
             ))
           )}
+        </TabsContent>
+
+        {/* ── Visitas ── */}
+        <TabsContent value="visitas" className="mt-4">
+          <VisitOrigins load={loadVisits} />
         </TabsContent>
 
         {/* ── Comentarios ── */}

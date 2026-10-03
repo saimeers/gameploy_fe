@@ -5,6 +5,13 @@ export const adminService = {
   getStats: () =>
     api.get('/admin/stats'),
 
+  /** Origen de las visitas de toda la plataforma; `days` null es todo el histórico. */
+  getVisitStats: (days) =>
+    api.get('/admin/stats/visits', { params: { days: days ?? undefined } }),
+
+  getProjectVisits: (projectId, days) =>
+    api.get(`/projects/${projectId}/visits`, { params: { days: days ?? undefined } }),
+
   // Users
   getUsers: (params) =>
     api.get('/users', { params }),
