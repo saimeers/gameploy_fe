@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   Plus, CheckCircle, Upload, FileArchive, Image, Camera,
-  Loader2, FolderOpen, Trash2, Eye, Check
+  Loader2, FolderOpen, Trash2, Eye, Check, Play
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,8 @@ import { studentService } from '../../services/student.service'
 import { LIMITS }         from '@/lib/limits'
 import { inspectWebGLZip } from '../../webglBuild'
 import UnityWebGLGuide     from '../UnityWebGLGuide'
+import { BuildPreviewDialog, FileMeta } from '@/components/files/FilePreviews'
+import { formatBytes, formatDateTime, playUrl } from '@/components/files/fileFormat'
 
 /** Etiqueta e icono de cada tipo de archivo en la lista de herencia. */
 const INHERIT_FILE_CFG = {
@@ -72,12 +74,13 @@ function isVersionGreater(newStr, latestStr) {
 }
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
-function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFileAdded, onFileDeleted }) {
+function UploadZone({ versionId, versionLabel, projectId, projectName, fileType, existingFiles = [], onFileAdded, onFileDeleted }) {
   const [progress, setProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [validating, setValidating] = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(false)
+  // Imagen ampliada: { url, file }
   const [selectedPreview, setSelectedPreview] = useState(null)
+  const [playing, setPlaying] = useState(false)
   const [previews, setPreviews] = useState({})
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleteInput, setDeleteInput] = useState('')
@@ -198,10 +201,7 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
               {previews[file.id] ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedPreview(previews[file.id])
-                    setPreviewOpen(true)
-                  }}
+                  onClick={() => setSelectedPreview({ url: previews[file.id], file })}
                   className="relative w-full h-full group"
                 >
                   <img
@@ -228,8 +228,11 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </button>
               {file.nombre_archivo && (
-                <div className="absolute bottom-0 left-0 right-0 bg-background/70 backdrop-blur-sm px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <p className="text-xs truncate text-foreground">{file.nombre_archivo}</p>
+                  <p className="text-[10px] truncate text-muted-foreground">
+                    {formatBytes(file.tamanio_bytes)} · {formatDateTime(file.fecha_subida)}
+                  </p>
                 </div>
               )}
             </div>
@@ -239,12 +242,22 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
 
       {/* WebGL existing indicator */}
       {isWebGL && existingFiles[0] && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-          <span className="text-xs text-emerald-400 truncate">{existingFiles[0].nombre_archivo}</span>
-          <Badge variant="outline" className="ml-auto text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shrink-0">
-            Listo
-          </Badge>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+          <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-emerald-400 truncate">{existingFiles[0].nombre_archivo}</p>
+            <FileMeta archivo={existingFiles[0]} />
+          </div>
+          <Button type="button" size="xs" onClick={() => setPlaying(true)}>
+            <Play /> Probar
+          </Button>
+          <BuildPreviewDialog
+            open={playing}
+            onOpenChange={setPlaying}
+            src={playUrl(projectId, versionId)}
+            title={projectName ?? 'Vista previa'}
+            version={versionLabel}
+          />
         </div>
       )}
 
@@ -279,14 +292,20 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
         </label>
       )}
 
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-5xl p-2 bg-background/95 border-border/50">
+      <Dialog open={!!selectedPreview} onOpenChange={open => { if (!open) setSelectedPreview(null) }}>
+        <DialogContent className="gap-3 p-3 bg-background text-popover-foreground sm:max-w-5xl">
           {selectedPreview && (
-            <img
-              src={selectedPreview}
-              alt="Vista previa"
-              className="w-full max-h-[85vh] object-contain rounded-lg"
-            />
+            <>
+              <img
+                src={selectedPreview.url}
+                alt={selectedPreview.file.nombre_archivo}
+                className="w-full max-h-[75vh] object-contain rounded-md bg-black/40"
+              />
+              <div className="px-1 pr-12">
+                <p className="truncate text-sm font-medium">{selectedPreview.file.nombre_archivo}</p>
+                <FileMeta archivo={selectedPreview.file} />
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
@@ -325,7 +344,7 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
 
 // ─── Version card ─────────────────────────────────────────────────────────────
 
-function VersionCard({ version: initialVersion, projectId, onActivated }) {
+function VersionCard({ version: initialVersion, projectId, projectName, onActivated }) {
   // La tarjeta lleva su propia copia para reflejar altas y bajas de archivos sin
   // esperar a que el padre recargue; cuando el padre trae datos nuevos, se
   // descarta la copia local (patrón de ajuste de estado al cambiar una prop).
@@ -442,7 +461,9 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
         <CardContent className="space-y-5 border-t border-border/40 pt-4">
           <UploadZone
             versionId={version.id}
+            versionLabel={version.numero_version}
             projectId={projectId}
+            projectName={projectName}
             fileType="juego_webgl"
             existingFiles={webglFiles}
             onFileAdded={handleFileAdded}
@@ -450,7 +471,9 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
           />
           <UploadZone
             versionId={version.id}
+            versionLabel={version.numero_version}
             projectId={projectId}
+            projectName={projectName}
             fileType="portada"
             existingFiles={portadaFiles}
             onFileAdded={handleFileAdded}
@@ -458,7 +481,9 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
           />
           <UploadZone
             versionId={version.id}
+            versionLabel={version.numero_version}
             projectId={projectId}
+            projectName={projectName}
             fileType="captura"
             existingFiles={capturaFiles}
             onFileAdded={handleFileAdded}
@@ -472,7 +497,7 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ProjectVersionsTab({ projectId }) {
+export default function ProjectVersionsTab({ projectId, projectName }) {
   const [versions, setVersions] = useState([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -754,6 +779,7 @@ export default function ProjectVersionsTab({ projectId }) {
               key={version.id}
               version={version}
               projectId={projectId}
+              projectName={projectName}
               onActivated={refreshVersions}
               onUploaded={refreshVersions}
             />

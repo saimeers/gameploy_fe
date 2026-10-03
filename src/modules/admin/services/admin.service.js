@@ -41,6 +41,10 @@ export const adminService = {
   deleteFile: (fileId) =>
     api.delete(`/admin/files/${fileId}`),
 
+  /** Archivos dentro del .zip de un juego, con las comprobaciones de subida. */
+  getBuildContents: (fileId) =>
+    api.get(`/admin/files/${fileId}/contents`),
+
   toggleFeatured: (projectId, destacado) =>
     api.patch(`/admin/projects/${projectId}/featured`, { destacado }),
 

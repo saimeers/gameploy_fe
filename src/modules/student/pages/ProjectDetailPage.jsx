@@ -174,7 +174,7 @@ export default function ProjectDetailPage() {
         </TabsContent>
 
         <TabsContent value="versiones" className="mt-4">
-          <ProjectVersionsTab projectId={project.id} />
+          <ProjectVersionsTab projectId={project.id} projectName={project.nombre} />
         </TabsContent>
 
         <TabsContent value="visitas" className="mt-4">
