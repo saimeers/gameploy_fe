@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { studentService } from '../../services/student.service'
 import { LIMITS }         from '@/lib/limits'
+import { inspectWebGLZip } from '../../webglBuild'
+import UnityWebGLGuide     from '../UnityWebGLGuide'
 
 /** Etiqueta e icono de cada tipo de archivo en la lista de herencia. */
 const INHERIT_FILE_CFG = {
@@ -86,7 +88,7 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
   const isCaptura = fileType === 'captura'
 
   const cfg = {
-    juego_webgl: { label: 'Juego WebGL', icon: FileArchive, accept: '.zip', desc: 'Archivo .zip con /Build, /TemplateData, index.html' },
+    juego_webgl: { label: 'Juego WebGL', icon: FileArchive, accept: '.zip', desc: 'Archivo .zip con el build Web de Unity (index.html, Build y TemplateData)' },
     portada: { label: 'Portada', icon: Image, accept: 'image/*', desc: 'Una imagen de presentación (PNG, JPG)' },
     captura: { label: 'Capturas', icon: Camera, accept: 'image/*', desc: 'Capturas de pantalla — puedes subir múltiples' },
   }[fileType]
@@ -113,23 +115,18 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
         try {
           const JSZip = (await import('jszip')).default
           const zip = await JSZip.loadAsync(file)
-          const paths = Object.keys(zip.files)
-          const errors = []
-          if (!paths.some(p => p === 'index.html' || p.endsWith('/index.html'))) errors.push('Falta index.html')
-          if (!paths.some(p => p.includes('Build/'))) errors.push('Falta carpeta /Build')
-          if (!paths.some(p => p.includes('TemplateData/'))) errors.push('Falta carpeta /TemplateData')
-          const buildFiles = paths.filter(p => p.includes('Build/'))
-          if (!buildFiles.some(p => p.endsWith('.loader.js'))) errors.push('Falta .loader.js')
-          if (!buildFiles.some(p => p.endsWith('.framework.js'))) errors.push('Falta .framework.js')
-          if (!buildFiles.some(p => p.endsWith('.data') || p.endsWith('.data.gz'))) errors.push('Falta .data')
-          if (!buildFiles.some(p => p.endsWith('.wasm') || p.endsWith('.wasm.gz'))) errors.push('Falta .wasm')
+          const { errors, warnings } = inspectWebGLZip(Object.keys(zip.files))
           if (errors.length) {
-            toast.error('Estructura WebGL inválida', { description: errors.join(' · '), duration: 6000 })
+            toast.error('Build WebGL inválido', { description: errors.join(' · '), duration: 8000 })
             e.target.value = ''
             setValidating(false)
             return
           }
-          toast.success('Estructura WebGL válida ✓')
+          if (warnings.length) {
+            toast.warning('Build WebGL válido, con una advertencia', { description: warnings.join(' · '), duration: 8000 })
+          } else {
+            toast.success('Estructura WebGL válida ✓')
+          }
         } catch {
           toast.error('No se pudo validar el archivo')
           e.target.value = ''
@@ -190,6 +187,8 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
         )}
       </div>
       <p className="text-xs text-muted-foreground">{cfg.desc}</p>
+
+      {isWebGL && <UnityWebGLGuide />}
 
       {/* Existing files — image previews */}
       {(isPortada || isCaptura) && existingFiles.length > 0 && (
