@@ -18,6 +18,20 @@ export const studentService = {
   publishProject: (id) =>
     api.patch(`/projects/${id}/publish`),
 
+  // Visits: `days` null es todo el histórico
+  getMyVisits: (days) =>
+    api.get('/projects/mine/visits', { params: { days: days ?? undefined } }),
+
+  getProjectVisits: (id, days) =>
+    api.get(`/projects/${id}/visits`, { params: { days: days ?? undefined } }),
+
+  // Slug
+  checkSlug: (id, slug) =>
+    api.get(`/projects/${id}/slug`, { params: { slug } }),
+
+  changeSlug: (id, slug) =>
+    api.patch(`/projects/${id}/slug`, { slug }),
+
   deleteProject: (id) =>
     api.delete(`/projects/${id}`),
 
@@ -66,8 +80,9 @@ export const studentService = {
   deleteFile: (projectId, versionId, fileId) =>
     api.delete(`/projects/${projectId}/versions/${versionId}/files/${fileId}`),
 
-  getFileUrl: (key) =>
-    api.get(`/public/files/url?key=${encodeURIComponent(key)}`),
+  /** Enlace de 5 minutos para descargar el archivo original (el .zip del juego). */
+  downloadFile: (projectId, versionId, fileId) =>
+    api.get(`/projects/${projectId}/versions/${versionId}/files/${fileId}/download`),
 
   getPublicGame: (slug) =>
     api.get(`/public/games/${slug}`),

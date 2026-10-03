@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   Loader2, Pencil, Check, X, Mail, CalendarDays, FolderOpen,
@@ -11,22 +11,11 @@ import { Input }  from '@/components/ui/input'
 import { Label }  from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LIMITS } from '@/lib/limits'
-import { profileService } from '../services/profile.service'
 import { ROLE_LABELS, VISIBILITY, formatDate, initials } from '../profileHelpers'
 
 /** Tarjeta de un proyecto publicado, con su portada si la versión activa la tiene. */
 function PublishedProject({ project }) {
-  const [portadaUrl, setPortadaUrl] = useState(null)
-  const portada = project.versiones?.[0]?.archivos?.[0]
-
-  useEffect(() => {
-    if (!portada?.ruta_storage) return
-    let cancelled = false
-    profileService.getFileUrl(portada.ruta_storage)
-      .then(res => { if (!cancelled) setPortadaUrl(res.data.data.url) })
-      .catch(() => { /* la tarjeta se queda con el icono */ })
-    return () => { cancelled = true }
-  }, [portada])
+  const portadaUrl = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')?.url
 
   const VisIcon = VISIBILITY[project.visibilidad]?.icon ?? Globe
 

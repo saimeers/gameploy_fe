@@ -6,10 +6,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input }  from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import ControlDiagram  from '@/components/controls/ControlDiagram'
 import ControlsViewer  from '@/components/controls/ControlsViewer'
 import { indexByKey }  from '@/components/controls/controlHelpers'
@@ -131,16 +128,15 @@ export default function ProjectControlsTab({ projectId }) {
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (control) => {
+    setToDelete(null)
     try {
-      await studentService.deleteControl(projectId, toDelete.id)
+      await studentService.deleteControl(projectId, control.id)
       toast.success('Control eliminado')
-      if (toDelete.tecla_boton === selectedKey) cancelEdit()
+      if (control.tecla_boton === selectedKey) cancelEdit()
       await refresh()
     } catch {
       toast.error('Error al eliminar')
-    } finally {
-      setToDelete(null)
     }
   }
 
@@ -342,20 +338,22 @@ export default function ProjectControlsTab({ projectId }) {
         </Card>
       )}
 
-      <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-        <AlertDialogContent className="bg-background text-popover-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar control</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Eliminar <strong>{toDelete?.tecla_boton}</strong> — {toDelete?.descripcion_accion}?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <HoldConfirmDialog
+        open={!!toDelete}
+        onOpenChange={() => setToDelete(null)}
+        title="Eliminar control"
+        description="Deja de aparecer en el diagrama de controles de tu juego."
+        label="Mantén pulsado para eliminar"
+        holdTime={1200}
+        onConfirm={() => handleDelete(toDelete)}
+      >
+        {toDelete && (
+          <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2 text-sm">
+            <span className="font-mono font-medium">{toDelete.tecla_boton}</span>
+            <span className="text-muted-foreground"> — {toDelete.descripcion_accion}</span>
+          </div>
+        )}
+      </HoldConfirmDialog>
     </div>
   )
 }

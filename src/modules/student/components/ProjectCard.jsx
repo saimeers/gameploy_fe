@@ -7,9 +7,6 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { useState } from 'react'
-import { useEffect } from 'react'
-import { studentService } from '../services/student.service'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -24,15 +21,7 @@ const VISIBILITY_ICON = {
 }
 
 export default function ProjectCard({ project, onDelete }) {
-  const [portadaUrl, setPortadaUrl] = useState(null)
-  const portadaFile = project.versiones?.[0]?.archivos?.[0]
-
-  useEffect(() => {
-    if (!portadaFile?.ruta_storage) return
-    studentService.getFileUrl(portadaFile.ruta_storage)
-      .then(res => setPortadaUrl(res.data.data.url))
-      .catch(() => {})
-  }, [portadaFile])
+  const portadaUrl = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')?.url
 
   const statusCfg = STATUS_CFG[project.estado] ?? { label: project.estado, class: '' }
   const VisIcon   = VISIBILITY_ICON[project.visibilidad] ?? Lock

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Users, Gamepad2, Eye, Clock, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { adminService } from '../services/admin.service'
+import VisitOrigins from '@/components/visits/VisitOrigins'
 
 export default function AdminDashboard() {
   const [stats, setStats]     = useState(null)
@@ -13,6 +14,11 @@ export default function AdminDashboard() {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
+
+  const loadVisits = useCallback(
+    (days) => adminService.getVisitStats(days).then(res => res.data.data),
+    []
+  )
 
   const cards = [
     { label: 'Usuarios activos',          value: stats?.totalUsers      ?? '—', icon: Users },
@@ -45,12 +51,17 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Top projects */}
+      <VisitOrigins
+        load={loadVisits}
+        description="Todas las visitas a los juegos de la plataforma, según la conexión de cada visitante. No se guarda su IP."
+      />
+
+      {/* Recent projects */}
       <Card className="border-border/50 bg-card/60">
         <CardHeader>
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm">Proyectos más visitados</CardTitle>
+            <CardTitle className="text-sm">Publicados recientemente</CardTitle>
           </div>
         </CardHeader>
         <CardContent>

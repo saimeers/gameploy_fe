@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   Plus, CheckCircle, Upload, FileArchive, Image, Camera,
-  Loader2, FolderOpen, Trash2, Eye, Check
+  Loader2, FolderOpen, Trash2, Eye, Check, Play, Download
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,12 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
   Dialog, DialogContent,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import { studentService } from '../../services/student.service'
 import { LIMITS }         from '@/lib/limits'
+import { inspectWebGLZip } from '../../webglBuild'
+import UnityWebGLGuide     from '../UnityWebGLGuide'
+import { BuildPreviewDialog, FileMeta } from '@/components/files/FilePreviews'
+import { formatBytes, formatDateTime, gameUrl } from '@/components/files/fileFormat'
 
 /** Etiqueta e icono de cada tipo de archivo en la lista de herencia. */
 const INHERIT_FILE_CFG = {
@@ -70,15 +71,32 @@ function isVersionGreater(newStr, latestStr) {
 }
 // ─── Upload zone ──────────────────────────────────────────────────────────────
 
-function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFileAdded, onFileDeleted }) {
+const MAX_UPLOAD_BYTES = LIMITS.archivoMaxMB * 1024 * 1024
+
+/** Aviso de un archivo que supera el máximo, con el porqué y qué hacer. */
+function warnTooLarge(file, isWebGL) {
+  toast.error(
+    `${file.name} pesa ${formatBytes(file.size)} y el máximo es ${LIMITS.archivoMaxMB} MB`,
+    {
+      description: `Es una limitación actual del sistema: el servidor acepta subidas de hasta 100 MB. ${
+        isWebGL
+          ? 'Reduce el tamaño del build (mira el último paso de la guía) e inténtalo de nuevo.'
+          : 'Reduce la imagen e inténtalo de nuevo.'
+      }`,
+      duration: 10000,
+    },
+  )
+}
+
+function UploadZone({ versionId, versionLabel, projectId, projectName, fileType, existingFiles = [], onFileAdded, onFileDeleted }) {
   const [progress, setProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [validating, setValidating] = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(false)
+  // Imagen ampliada: { url, file }
   const [selectedPreview, setSelectedPreview] = useState(null)
-  const [previews, setPreviews] = useState({})
+  const [playing, setPlaying] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [deleteInput, setDeleteInput] = useState('')
   const inputRef = useRef()
 
   const isWebGL = fileType === 'juego_webgl'
@@ -86,21 +104,10 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
   const isCaptura = fileType === 'captura'
 
   const cfg = {
-    juego_webgl: { label: 'Juego WebGL', icon: FileArchive, accept: '.zip', desc: 'Archivo .zip con /Build, /TemplateData, index.html' },
-    portada: { label: 'Portada', icon: Image, accept: 'image/*', desc: 'Una imagen de presentación (PNG, JPG)' },
-    captura: { label: 'Capturas', icon: Camera, accept: 'image/*', desc: 'Capturas de pantalla — puedes subir múltiples' },
+    juego_webgl: { label: 'Juego WebGL', icon: FileArchive, accept: '.zip', desc: `Archivo .zip con el build Web de Unity (index.html, Build y TemplateData), de hasta ${LIMITS.archivoMaxMB} MB` },
+    portada: { label: 'Portada', icon: Image, accept: 'image/*', desc: `Una imagen de presentación (PNG, JPG), de hasta ${LIMITS.archivoMaxMB} MB` },
+    captura: { label: 'Capturas', icon: Camera, accept: 'image/*', desc: `Capturas de pantalla — puedes subir múltiples, de hasta ${LIMITS.archivoMaxMB} MB cada una` },
   }[fileType]
-
-  // Load presigned URLs for existing image files
-  useEffect(() => {
-    existingFiles.forEach(async (file) => {
-      if (previews[file.id]) return
-      try {
-        const res = await studentService.getFileUrl(file.ruta_storage)
-        setPreviews(prev => ({ ...prev, [file.id]: res.data.data.url }))
-      } catch { /* sin previsualización si la URL falla */ }
-    })
-  }, [existingFiles])
 
   const handleFile = async (e) => {
     const files = isCaptura ? Array.from(e.target.files) : [e.target.files?.[0]]
@@ -108,28 +115,29 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
     if (!validFiles.length) return
 
     for (const file of validFiles) {
+      // Antes de abrirlo: un archivo demasiado grande no llegaría al servidor.
+      if (file.size > MAX_UPLOAD_BYTES) {
+        warnTooLarge(file, isWebGL)
+        continue
+      }
+
       if (isWebGL) {
         setValidating(true)
         try {
           const JSZip = (await import('jszip')).default
           const zip = await JSZip.loadAsync(file)
-          const paths = Object.keys(zip.files)
-          const errors = []
-          if (!paths.some(p => p === 'index.html' || p.endsWith('/index.html'))) errors.push('Falta index.html')
-          if (!paths.some(p => p.includes('Build/'))) errors.push('Falta carpeta /Build')
-          if (!paths.some(p => p.includes('TemplateData/'))) errors.push('Falta carpeta /TemplateData')
-          const buildFiles = paths.filter(p => p.includes('Build/'))
-          if (!buildFiles.some(p => p.endsWith('.loader.js'))) errors.push('Falta .loader.js')
-          if (!buildFiles.some(p => p.endsWith('.framework.js'))) errors.push('Falta .framework.js')
-          if (!buildFiles.some(p => p.endsWith('.data') || p.endsWith('.data.gz'))) errors.push('Falta .data')
-          if (!buildFiles.some(p => p.endsWith('.wasm') || p.endsWith('.wasm.gz'))) errors.push('Falta .wasm')
+          const { errors, warnings } = inspectWebGLZip(Object.keys(zip.files))
           if (errors.length) {
-            toast.error('Estructura WebGL inválida', { description: errors.join(' · '), duration: 6000 })
+            toast.error('Build WebGL inválido', { description: errors.join(' · '), duration: 8000 })
             e.target.value = ''
             setValidating(false)
             return
           }
-          toast.success('Estructura WebGL válida ✓')
+          if (warnings.length) {
+            toast.warning('Build WebGL válido, con una advertencia', { description: warnings.join(' · '), duration: 8000 })
+          } else {
+            toast.success('Estructura WebGL válida ✓')
+          }
         } catch {
           toast.error('No se pudo validar el archivo')
           e.target.value = ''
@@ -145,16 +153,13 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
         const formData = new FormData()
         formData.append('file', file)
         formData.append('fileType', fileType)
+        // La respuesta trae el archivo con su enlace firmado (url o play_url).
         const res = await studentService.uploadFile(projectId, versionId, formData, setProgress)
-        // Create local preview for images without reloading
-        if (isPortada || isCaptura) {
-          const localUrl = URL.createObjectURL(file)
-          setPreviews(prev => ({ ...prev, [res.data.data.id]: localUrl }))
-        }
         onFileAdded(res.data.data)
         toast.success(`${isCaptura ? 'Captura' : cfg.label} subida`)
       } catch (err) {
-        toast.error(err.response?.data?.message ?? 'Error al subir')
+        if (err.response?.status === 413) warnTooLarge(file, isWebGL)
+        else toast.error(err.response?.data?.message ?? 'Error al subir')
       } finally {
         setUploading(false)
         setProgress(0)
@@ -163,19 +168,26 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
     e.target.value = ''
   }
 
-  const confirmDelete = async () => {
-    if (deleteInput !== 'eliminar') return
+  const confirmDelete = async (file) => {
+    setDeleteConfirm(null)
     try {
-      await studentService.deleteFile(projectId, versionId, deleteConfirm.id)
-      onFileDeleted(deleteConfirm.id)
-      // Revoke object URL if it was local
-      if (previews[deleteConfirm.id]?.startsWith('blob:')) {
-        URL.revokeObjectURL(previews[deleteConfirm.id])
-      }
-      setPreviews(prev => { const n = { ...prev }; delete n[deleteConfirm.id]; return n })
+      await studentService.deleteFile(projectId, versionId, file.id)
+      onFileDeleted(file.id)
       toast.success('Archivo eliminado')
     } catch { toast.error('Error al eliminar') }
-    finally { setDeleteConfirm(null); setDeleteInput('') }
+  }
+
+  /** Descarga el .zip original con un enlace de 5 minutos que firma la API. */
+  const downloadBuild = async (file) => {
+    setDownloading(true)
+    try {
+      const res = await studentService.downloadFile(projectId, versionId, file.id)
+      window.location.assign(res.data.data.url)
+    } catch {
+      toast.error('No se pudo descargar el archivo')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   const busy = uploading || validating
@@ -191,22 +203,21 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
       </div>
       <p className="text-xs text-muted-foreground">{cfg.desc}</p>
 
+      {isWebGL && <UnityWebGLGuide />}
+
       {/* Existing files — image previews */}
       {(isPortada || isCaptura) && existingFiles.length > 0 && (
         <div className={`grid gap-2 ${isCaptura ? 'grid-cols-3' : 'grid-cols-1'}`}>
           {existingFiles.map(file => (
             <div key={file.id} className="relative group rounded-lg overflow-hidden border border-border/50 bg-muted/20">
-              {previews[file.id] ? (
+              {file.url ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedPreview(previews[file.id])
-                    setPreviewOpen(true)
-                  }}
+                  onClick={() => setSelectedPreview({ url: file.url, file })}
                   className="relative w-full h-full group"
                 >
                   <img
-                    src={previews[file.id]}
+                    src={file.url}
                     alt={file.nombre_archivo}
                     className={` w-full object-cover transition-transform duration-300 group-hover:scale-105 ${isPortada ? 'h-40' : 'h-24'} `}
                   />
@@ -218,7 +229,7 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
                 </button>
               ) : (
                 <div className={`flex items-center justify-center bg-muted/30 ${isPortada ? 'h-40' : 'h-24'}`}>
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Image className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}
               <button
@@ -229,8 +240,11 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </button>
               {file.nombre_archivo && (
-                <div className="absolute bottom-0 left-0 right-0 bg-background/70 backdrop-blur-sm px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <p className="text-xs truncate text-foreground">{file.nombre_archivo}</p>
+                  <p className="text-[10px] truncate text-muted-foreground">
+                    {formatBytes(file.tamanio_bytes)} · {formatDateTime(file.fecha_subida)}
+                  </p>
                 </div>
               )}
             </div>
@@ -240,12 +254,33 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
 
       {/* WebGL existing indicator */}
       {isWebGL && existingFiles[0] && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-          <CheckCircle className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-          <span className="text-xs text-emerald-400 truncate">{existingFiles[0].nombre_archivo}</span>
-          <Badge variant="outline" className="ml-auto text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shrink-0">
-            Listo
-          </Badge>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+          <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-emerald-400 truncate">{existingFiles[0].nombre_archivo}</p>
+            <FileMeta archivo={existingFiles[0]} />
+          </div>
+          <Button type="button" size="xs" onClick={() => setPlaying(true)}>
+            <Play /> Probar
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            title="Descargar .zip"
+            aria-label="Descargar .zip"
+            disabled={downloading}
+            onClick={() => downloadBuild(existingFiles[0])}
+          >
+            {downloading ? <Loader2 className="animate-spin" /> : <Download />}
+          </Button>
+          <BuildPreviewDialog
+            open={playing}
+            onOpenChange={setPlaying}
+            src={gameUrl(projectId, { id: versionId, archivos: existingFiles })}
+            title={projectName ?? 'Vista previa'}
+            version={versionLabel}
+          />
         </div>
       )}
 
@@ -280,53 +315,47 @@ function UploadZone({ versionId, projectId, fileType, existingFiles = [], onFile
         </label>
       )}
 
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-5xl p-2 bg-background/95 border-border/50">
+      <Dialog open={!!selectedPreview} onOpenChange={open => { if (!open) setSelectedPreview(null) }}>
+        <DialogContent className="gap-3 p-3 bg-background text-popover-foreground sm:max-w-5xl">
           {selectedPreview && (
-            <img
-              src={selectedPreview}
-              alt="Vista previa"
-              className="w-full max-h-[85vh] object-contain rounded-lg"
-            />
+            <>
+              <img
+                src={selectedPreview.url}
+                alt={selectedPreview.file.nombre_archivo}
+                className="w-full max-h-[75vh] object-contain rounded-md bg-black/40"
+              />
+              <div className="px-1 pr-12">
+                <p className="truncate text-sm font-medium">{selectedPreview.file.nombre_archivo}</p>
+                <FileMeta archivo={selectedPreview.file} />
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
 
       {/* Delete confirm */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => { setDeleteConfirm(null); setDeleteInput('') }}>
-        <AlertDialogContent className="bg-background text-popover-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar archivo permanentemente</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Escribe <strong>eliminar</strong> para confirmar.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Input
-            className="mt-2"
-            placeholder="eliminar"
-            maxLength={LIMITS.confirmacion}
-            value={deleteInput}
-            onChange={e => setDeleteInput(e.target.value)}
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteInput('')}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleteInput !== 'eliminar'}
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Eliminar permanentemente
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <HoldConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={() => setDeleteConfirm(null)}
+        title="Eliminar archivo permanentemente"
+        description="Esta acción no se puede deshacer. Si otra versión heredó este archivo, la otra versión lo conserva."
+        label="Mantén pulsado para eliminar"
+        onConfirm={() => confirmDelete(deleteConfirm)}
+      >
+        {deleteConfirm && (
+          <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+            <p className="truncate text-sm font-medium">{deleteConfirm.nombre_archivo}</p>
+            <FileMeta archivo={deleteConfirm} />
+          </div>
+        )}
+      </HoldConfirmDialog>
     </div>
   )
 }
 
 // ─── Version card ─────────────────────────────────────────────────────────────
 
-function VersionCard({ version: initialVersion, projectId, onActivated }) {
+function VersionCard({ version: initialVersion, projectId, projectName, onActivated }) {
   // La tarjeta lleva su propia copia para reflejar altas y bajas de archivos sin
   // esperar a que el padre recargue; cuando el padre trae datos nuevos, se
   // descarta la copia local (patrón de ajuste de estado al cambiar una prop).
@@ -443,7 +472,9 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
         <CardContent className="space-y-5 border-t border-border/40 pt-4">
           <UploadZone
             versionId={version.id}
+            versionLabel={version.numero_version}
             projectId={projectId}
+            projectName={projectName}
             fileType="juego_webgl"
             existingFiles={webglFiles}
             onFileAdded={handleFileAdded}
@@ -451,7 +482,9 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
           />
           <UploadZone
             versionId={version.id}
+            versionLabel={version.numero_version}
             projectId={projectId}
+            projectName={projectName}
             fileType="portada"
             existingFiles={portadaFiles}
             onFileAdded={handleFileAdded}
@@ -459,7 +492,9 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
           />
           <UploadZone
             versionId={version.id}
+            versionLabel={version.numero_version}
             projectId={projectId}
+            projectName={projectName}
             fileType="captura"
             existingFiles={capturaFiles}
             onFileAdded={handleFileAdded}
@@ -473,7 +508,7 @@ function VersionCard({ version: initialVersion, projectId, onActivated }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ProjectVersionsTab({ projectId }) {
+export default function ProjectVersionsTab({ projectId, projectName }) {
   const [versions, setVersions] = useState([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -755,6 +790,7 @@ export default function ProjectVersionsTab({ projectId }) {
               key={version.id}
               version={version}
               projectId={projectId}
+              projectName={projectName}
               onActivated={refreshVersions}
               onUploaded={refreshVersions}
             />

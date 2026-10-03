@@ -18,10 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { adminService } from '../services/admin.service'
 import { LIMITS }       from '@/lib/limits'
@@ -285,7 +282,9 @@ export default function UsersPage() {
 
                             {/* Activar / Desactivar */}
                             <DropdownMenuItem
-                              onClick={() => setConfirm({ type: 'status', user })}
+                              onClick={() => user.activo
+                                ? setConfirm({ type: 'status', user })
+                                : handleToggleStatus(user)}
                               className={user.activo ? 'text-destructive focus:text-destructive' : ''}
                             >
                               {user.activo ? (
@@ -334,27 +333,27 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Confirm dialog */}
-      <AlertDialog open={!!confirm} onOpenChange={() => setConfirm(null)}>
-        <AlertDialogContent className="bg-background text-popover-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirm?.user?.activo ? 'Desactivar usuario' : 'Activar usuario'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirm?.user?.activo
-                ? `${confirm?.user?.nombre} no podrá acceder a la plataforma.`
-                : `${confirm?.user?.nombre} recuperará el acceso a la plataforma.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleToggleStatus(confirm.user)}>
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Desactivar o rechazar: ambas dejan la cuenta sin acceso */}
+      <HoldConfirmDialog
+        open={!!confirm}
+        onOpenChange={() => setConfirm(null)}
+        tone={confirm?.type === 'reject' ? 'destructive' : 'warning'}
+        title={confirm?.type === 'reject' ? 'Rechazar solicitud' : 'Desactivar usuario'}
+        description={confirm?.type === 'reject'
+          ? 'La cuenta queda desactivada y no podrá entrar a la plataforma.'
+          : 'No podrá entrar a la plataforma hasta que vuelvas a activarlo. Sus proyectos se conservan.'}
+        label={confirm?.type === 'reject' ? 'Mantén pulsado para rechazar' : 'Mantén pulsado para desactivar'}
+        doneLabel={confirm?.type === 'reject' ? 'Rechazada' : 'Desactivado'}
+        icon={<UserX className="h-4 w-4" />}
+        onConfirm={() => handleToggleStatus(confirm.user)}
+      >
+        {confirm?.user && (
+          <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+            <p className="truncate text-sm font-medium">{confirm.user.nombre}</p>
+            <p className="truncate text-xs text-muted-foreground">{confirm.user.correo}</p>
+          </div>
+        )}
+      </HoldConfirmDialog>
     </div>
   )
 }

@@ -1,21 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   ArrowLeft, Globe, Lock, Link2, Loader2, ExternalLink,
   Star, Eye, MessageSquare, FileArchive, Image, Camera,
-  Download, Gamepad2, EyeOff, Tag, Trash2, Check,
+  Download, Gamepad2, EyeOff, Tag, Trash2, Play, ListTree,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge }  from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
 import { adminService } from '../services/admin.service'
 import ControlsViewer   from '@/components/controls/ControlsViewer'
-import HoldButton       from '@/components/HoldButton'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
+import VisitOrigins     from '@/components/visits/VisitOrigins'
+import BuildContents    from '@/components/files/BuildContents'
+import { BuildPreviewDialog, FileMeta, ImageThumb } from '@/components/files/FilePreviews'
+import { formatBytes, gameUrl } from '@/components/files/fileFormat'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -29,13 +30,6 @@ const FILE_CFG = {
   juego_webgl: { label: 'Juego WebGL', icon: FileArchive },
   portada:     { label: 'Portada',     icon: Image },
   captura:     { label: 'Captura',     icon: Camera },
-}
-
-const formatBytes = (bytes) => {
-  const n = Number(bytes) || 0
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
 
 const formatDate = (value) =>
@@ -63,42 +57,143 @@ function Stat({ icon: Icon, value, label }) {
   )
 }
 
-/**
- * Confirmación de una acción irreversible: exige mantener pulsado el botón,
- * y deja ver el estado "Eliminado" un instante antes de cerrarse.
- */
-function HoldDeleteDialog({ open, onOpenChange, title, description, label, onConfirm, children }) {
+/** El .zip del juego: datos, prueba en vivo, contenido, descarga y borrado. */
+function BuildCard({ project, version, archivo, onDelete, onDownload, downloading }) {
+  const [playing, setPlaying] = useState(false)
+  const [showContents, setShowContents] = useState(false)
+  const loadContents = useCallback(
+    () => adminService.getBuildContents(archivo.id).then(res => res.data.data),
+    [archivo.id]
+  )
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {children}
-
-          <HoldButton
-            className="w-full"
-            size="md"
-            radius={8}
-            holdTime={2000}
-            backgroundColor="var(--muted)"
-            fillColor="var(--destructive)"
-            textColor="var(--foreground)"
-            fillTextColor="#ffffff"
-            icon={<Trash2 className="h-4 w-4" />}
-            doneIcon={<Check className="h-4 w-4" />}
-            doneLabel="Eliminado"
-            resetAfter={0}
-            onHold={() => setTimeout(onConfirm, 600)}
-          >
-            {label}
-          </HoldButton>
+    <div className="overflow-hidden rounded-lg border border-border/50 bg-background/40">
+      <div className="flex flex-wrap items-center gap-3 p-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+          <FileArchive className="h-5 w-5" />
         </div>
-      </DialogContent>
-    </Dialog>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{archivo.nombre_archivo}</p>
+          <FileMeta archivo={archivo} />
+        </div>
+        <div className="flex items-center gap-1">
+          <Button size="xs" onClick={() => setPlaying(true)}>
+            <Play /> Probar
+          </Button>
+          <Button
+            variant="ghost"
+            size="xs"
+            aria-expanded={showContents}
+            onClick={() => setShowContents(v => !v)}
+          >
+            <ListTree /> Contenido
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            title="Descargar .zip"
+            aria-label="Descargar .zip"
+            disabled={downloading === archivo.id}
+            onClick={() => onDownload(archivo)}
+          >
+            {downloading === archivo.id ? <Loader2 className="animate-spin" /> : <Download />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="text-destructive hover:text-destructive"
+            title="Eliminar definitivamente"
+            aria-label="Eliminar el .zip"
+            onClick={() => onDelete(archivo)}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      </div>
+
+      {showContents && (
+        <div className="border-t border-border/50 p-3">
+          <BuildContents load={loadContents} />
+        </div>
+      )}
+
+      <BuildPreviewDialog
+        open={playing}
+        onOpenChange={setPlaying}
+        src={gameUrl(project.id, version)}
+        title={project.nombre}
+        version={version.numero_version}
+      />
+    </div>
+  )
+}
+
+/** Archivos de una versión: el build y las imágenes con vista previa. */
+function VersionFiles({ project, version, onDelete, onDownload, downloading }) {
+  const archivos = version.archivos ?? []
+  const build = archivos.find(a => a.tipo === 'juego_webgl')
+  const portada = archivos.find(a => a.tipo === 'portada')
+  const capturas = archivos.filter(a => a.tipo === 'captura')
+
+  if (archivos.length === 0) {
+    return <p className="text-sm text-muted-foreground">Sin archivos en esta versión.</p>
+  }
+
+  const deleteAction = (archivo) => (
+    <Button
+      variant="secondary"
+      size="icon-xs"
+      className="bg-background/80 text-destructive backdrop-blur-sm hover:text-destructive"
+      aria-label={`Eliminar ${archivo.nombre_archivo}`}
+      onClick={() => onDelete(archivo)}
+    >
+      <Trash2 />
+    </Button>
+  )
+
+  return (
+    <div className="space-y-4">
+      {build ? (
+        <BuildCard
+          project={project}
+          version={version}
+          archivo={build}
+          onDelete={onDelete}
+          onDownload={onDownload}
+          downloading={downloading}
+        />
+      ) : (
+        <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
+          Esta versión no tiene el .zip del juego.
+        </p>
+      )}
+
+      {(portada || capturas.length > 0) && (
+        <div className="grid gap-3 sm:grid-cols-[2fr_3fr]">
+          {portada && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Portada</p>
+              <ImageThumb archivo={portada} label="Portada" actions={deleteAction(portada)} />
+            </div>
+          )}
+          {capturas.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Capturas ({capturas.length})</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {capturas.map((captura, i) => (
+                  <ImageThumb
+                    key={captura.id}
+                    archivo={captura}
+                    label={`Captura ${i + 1}`}
+                    actions={deleteAction(captura)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -136,13 +231,19 @@ export default function ProjectDetailAdminPage() {
     return () => { cancelled = true }
   }, [id, navigate])
 
-  const openFile = async (archivo) => {
+  const loadVisits = useCallback(
+    (days) => adminService.getProjectVisits(id, days).then(res => res.data.data),
+    [id]
+  )
+
+  /** Descarga el archivo original con un enlace de 5 minutos que firma la API. */
+  const downloadFile = async (archivo) => {
     setOpeningFile(archivo.id)
     try {
-      const res = await adminService.getFileUrl(archivo.ruta_storage)
-      window.open(res.data.data.url, '_blank', 'noopener')
+      const res = await adminService.downloadFile(archivo.id)
+      window.location.assign(res.data.data.url)
     } catch {
-      toast.error('No se pudo abrir el archivo')
+      toast.error('No se pudo descargar el archivo')
     } finally {
       setOpeningFile(null)
     }
@@ -280,6 +381,7 @@ export default function ProjectDetailAdminPage() {
           <TabsTrigger value="controles">Controles</TabsTrigger>
           <TabsTrigger value="versiones">Versiones y archivos</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
+          <TabsTrigger value="visitas">Visitas</TabsTrigger>
         </TabsList>
 
         {/* ── Información ── */}
@@ -380,55 +482,22 @@ export default function ProjectDetailAdminPage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  {(version.archivos ?? []).length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Sin archivos en esta versión.</p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {version.archivos.map(archivo => {
-                        const cfg = FILE_CFG[archivo.tipo] ?? { label: archivo.tipo, icon: FileArchive }
-                        const Icon = cfg.icon
-                        return (
-                          <div
-                            key={archivo.id}
-                            className="flex items-center gap-3 rounded-md border border-border/50 bg-background/40 px-3 py-2"
-                          >
-                            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm">{archivo.nombre_archivo}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {cfg.label} · {formatBytes(archivo.tamanio_bytes)}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0"
-                              title="Abrir archivo"
-                              disabled={openingFile === archivo.id}
-                              onClick={() => openFile(archivo)}
-                            >
-                              {openingFile === archivo.id
-                                ? <Loader2 className="h-4 w-4 animate-spin" />
-                                : <Download className="h-4 w-4" />}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                              title="Eliminar definitivamente"
-                              onClick={() => setFileToDelete(archivo)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                  <VersionFiles
+                    project={project}
+                    version={version}
+                    onDelete={setFileToDelete}
+                    onDownload={downloadFile}
+                    downloading={openingFile}
+                  />
                 </CardContent>
               </Card>
             ))
           )}
+        </TabsContent>
+
+        {/* ── Visitas ── */}
+        <TabsContent value="visitas" className="mt-4">
+          <VisitOrigins load={loadVisits} />
         </TabsContent>
 
         {/* ── Comentarios ── */}
@@ -509,7 +578,7 @@ export default function ProjectDetailAdminPage() {
       </Tabs>
 
       {/* Borrado permanente de un archivo */}
-      <HoldDeleteDialog
+      <HoldConfirmDialog
         open={!!fileToDelete}
         onOpenChange={() => setFileToDelete(null)}
         title="Eliminar archivo"
@@ -530,10 +599,10 @@ export default function ProjectDetailAdminPage() {
             </p>
           </div>
         )}
-      </HoldDeleteDialog>
+      </HoldConfirmDialog>
 
       {/* Borrado permanente de un comentario */}
-      <HoldDeleteDialog
+      <HoldConfirmDialog
         open={!!commentToDelete}
         onOpenChange={() => setCommentToDelete(null)}
         title="Eliminar comentario"
@@ -550,7 +619,7 @@ export default function ProjectDetailAdminPage() {
             <p className="text-sm text-muted-foreground">{commentToDelete.contenido}</p>
           </div>
         )}
-      </HoldDeleteDialog>
+      </HoldConfirmDialog>
     </div>
   )
 }

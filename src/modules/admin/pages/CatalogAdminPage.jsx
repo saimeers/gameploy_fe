@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, Loader2, Tag, LayoutGrid } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Tag, LayoutGrid, EyeOff, Eye, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,20 +10,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
     Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import HoldConfirmDialog from '@/components/HoldConfirmDialog'
+import { cn } from '@/lib/utils'
 import api from '@/services/api'
 import { LIMITS } from '@/lib/limits'
 
-function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, deleteFn }) {
+/** "Ningún proyecto la usa", "En 1 proyecto", "En 3 proyectos". */
+const usageLabel = (n) =>
+    n === 0 ? 'Ningún proyecto la usa' : `En ${n} proyecto${n !== 1 ? 's' : ''}`
+
+function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, setStatusFn, deleteFn }) {
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
     const [dialog, setDialog] = useState(null)
     const [toDelete, setToDelete] = useState(null)
+    const [toDeactivate, setToDeactivate] = useState(null)
     const [saving, setSaving] = useState(false)
-    const [deleting, setDeleting] = useState(false)
 
     const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm()
 
@@ -76,17 +78,27 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
         } finally { setSaving(false) }
     }
 
-    const handleDelete = async () => {
-        setDeleting(true)
+    const handleDelete = async (item) => {
+        setToDelete(null)
         try {
-            await deleteFn(toDelete.id)
+            await deleteFn(item.id)
             toast.success(`${label} eliminada`)
             refresh()
         } catch (err) {
-            toast.error(err.response?.data?.message ?? 'No se puede eliminar, puede estar en uso')
-        } finally {
-            setDeleting(false)
-            setToDelete(null)
+            toast.error(err.response?.status === 409
+                ? 'Está en uso por algún proyecto: desactívala en su lugar'
+                : 'No se pudo eliminar')
+        }
+    }
+
+    const handleStatus = async (item, activo) => {
+        setToDeactivate(null)
+        try {
+            await setStatusFn(item.id, activo)
+            toast.success(`${label} ${activo ? 'activada' : 'desactivada'}`)
+            refresh()
+        } catch {
+            toast.error('No se pudo cambiar el estado')
         }
     }
 
@@ -111,32 +123,67 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                 </div>
             ) : (
                 <div className="space-y-2">
-                    {items.map(item => (
-                        <div
-                            key={item.id}
-                            className="flex items-center justify-between rounded-lg border border-border/50 bg-card/60 px-4 py-3"
-                        >
-                            <div>
-                                <p className="text-sm font-medium">{item.nombre}</p>
-                                {item.descripcion && (
-                                    <p className="text-xs text-muted-foreground">{item.descripcion}</p>
+                    {items.map(item => {
+                        const usage = item._count?.proyectos ?? 0
+                        return (
+                            <div
+                                key={item.id}
+                                className={cn(
+                                    'flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-card/60 px-4 py-3',
+                                    !item.activo && 'border-dashed bg-transparent',
                                 )}
+                            >
+                                <div className={cn('min-w-0 space-y-1', !item.activo && 'opacity-60')}>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-sm font-medium">{item.nombre}</p>
+                                        {!item.activo && (
+                                            <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                Desactivada
+                                            </span>
+                                        )}
+                                    </div>
+                                    {item.descripcion && (
+                                        <p className="text-xs text-muted-foreground">{item.descripcion}</p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                        {usageLabel(usage)}
+                                    </p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                    <Button variant="ghost" size="icon-xs" title="Editar" aria-label={`Editar ${item.nombre}`} onClick={() => openEdit(item)}>
+                                        <Pencil />
+                                    </Button>
+                                    {item.activo ? (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            className="text-amber-500 hover:text-amber-500"
+                                            title="Desactivar"
+                                            aria-label={`Desactivar ${item.nombre}`}
+                                            onClick={() => setToDeactivate(item)}
+                                        >
+                                            <EyeOff />
+                                        </Button>
+                                    ) : (
+                                        <Button variant="ghost" size="xs" onClick={() => handleStatus(item, true)}>
+                                            <Eye /> Activar
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-xs"
+                                        className="text-destructive hover:text-destructive disabled:opacity-30"
+                                        title={usage > 0 ? 'En uso: desactívala en su lugar' : 'Eliminar'}
+                                        aria-label={`Eliminar ${item.nombre}`}
+                                        disabled={usage > 0}
+                                        onClick={() => setToDelete(item)}
+                                    >
+                                        <Trash2 />
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
-                                    <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    onClick={() => setToDelete(item)}
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
 
@@ -181,28 +228,44 @@ function CrudSection({ type, label, icon: Icon, fetchFn, createFn, updateFn, del
                 </DialogContent>
             </Dialog>
 
-            {/* Delete confirm */}
-            <AlertDialog open={!!toDelete} onOpenChange={() => setToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Eliminar {label.toLowerCase()}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            ¿Eliminar <strong>{toDelete?.nombre}</strong>? Si está en uso por algún proyecto, no se podrá eliminar.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete}
-                            disabled={deleting}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Eliminar
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {/* Desactivar */}
+            <HoldConfirmDialog
+                open={!!toDeactivate}
+                onOpenChange={() => setToDeactivate(null)}
+                tone="warning"
+                title={`Desactivar ${label.toLowerCase()}`}
+                description="Deja de ofrecerse en los formularios y en los filtros del catálogo. Los proyectos que ya la usan la conservan, y puedes volver a activarla cuando quieras."
+                label="Mantén pulsado para desactivar"
+                doneLabel="Desactivada"
+                icon={<EyeOff className="h-4 w-4" />}
+                onConfirm={() => handleStatus(toDeactivate, false)}
+            >
+                {toDeactivate && (
+                    <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+                        <p className="text-sm font-medium">{toDeactivate.nombre}</p>
+                        <p className="text-xs text-muted-foreground">
+                            {usageLabel(toDeactivate._count?.proyectos ?? 0)}
+                        </p>
+                    </div>
+                )}
+            </HoldConfirmDialog>
+
+            {/* Eliminar: solo lo que ningún proyecto usa */}
+            <HoldConfirmDialog
+                open={!!toDelete}
+                onOpenChange={() => setToDelete(null)}
+                title={`Eliminar ${label.toLowerCase()}`}
+                description="Ningún proyecto la usa, así que se borra definitivamente. No se puede deshacer."
+                label="Mantén pulsado para eliminar"
+                doneLabel="Eliminada"
+                onConfirm={() => handleDelete(toDelete)}
+            >
+                {toDelete && (
+                    <div className="rounded-md border border-border/50 bg-background/40 px-3 py-2">
+                        <p className="text-sm font-medium">{toDelete.nombre}</p>
+                    </div>
+                )}
+            </HoldConfirmDialog>
         </div>
     )
 }
@@ -216,6 +279,12 @@ export default function CatalogAdminPage() {
                     Gestiona las categorías y etiquetas disponibles para los proyectos.
                 </p>
             </div>
+
+            <p className="flex gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                Desactivar oculta una categoría o etiqueta de los formularios y filtros, pero los
+                proyectos que ya la tienen la conservan. Solo se puede eliminar lo que ningún proyecto usa.
+            </p>
 
             <Tabs defaultValue="categorias">
                 <TabsList className="bg-card/60 border border-border/50">
@@ -242,6 +311,7 @@ export default function CatalogAdminPage() {
                                 fetchFn={() => api.get('/admin/categorias')}
                                 createFn={(data) => api.post('/admin/categorias', data)}
                                 updateFn={(id, data) => api.patch(`/admin/categorias/${id}`, data)}
+                                setStatusFn={(id, activo) => api.patch(`/admin/categorias/${id}/status`, { activo })}
                                 deleteFn={(id) => api.delete(`/admin/categorias/${id}`)}
                             />
                         </CardContent>
@@ -261,6 +331,7 @@ export default function CatalogAdminPage() {
                                 fetchFn={() => api.get('/admin/etiquetas')}
                                 createFn={(data) => api.post('/admin/etiquetas', data)}
                                 updateFn={(id, data) => api.patch(`/admin/etiquetas/${id}`, data)}
+                                setStatusFn={(id, activo) => api.patch(`/admin/etiquetas/${id}/status`, { activo })}
                                 deleteFn={(id) => api.delete(`/admin/etiquetas/${id}`)}
                             />
                         </CardContent>

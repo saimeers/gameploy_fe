@@ -34,4 +34,9 @@ export const LIMITS = {
   // Campos de búsqueda y confirmación
   busqueda: 80,
   confirmacion: 20,
+
+  // Archivos (MB): la API está detrás del proxy de Cloudflare, que rechaza
+  // subidas de más de 100 MB; 95 deja margen para el resto del formulario.
+  // La API comprueba el mismo valor (gameploy_be: src/config/uploads.js).
+  archivoMaxMB: 95,
 }
