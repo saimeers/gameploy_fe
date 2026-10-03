@@ -88,6 +88,7 @@ etiqueta accesible, nunca por clases de CSS.
 src/
 ├── router/index.jsx     Definición de todas las rutas
 ├── components/
+│   ├── game/            GamePlayer: reproductor de los builds Unity WebGL
 │   ├── layout/          DashboardLayout, AppSidebar, NavMain, NavUser
 │   ├── ui/              Componentes de shadcn/ui (TypeScript)
 │   ├── ProtectedRoute   Guarda de rutas por rol
@@ -136,14 +137,27 @@ Tras iniciar sesión, `useAuth` redirige según el rol devuelto por la API.
 ## Publicación y ejecución de un juego
 
 1. El estudiante crea el proyecto y una versión desde `/student`.
-2. Sube el `.zip` exportado desde Unity (WebGL). Antes de enviarlo, el navegador lo valida con `jszip`:
-   debe contener `index.html`, las carpetas `Build/` y `TemplateData/`, y dentro de `Build/` los
-   archivos `.loader.js`, `.framework.js`, `.data` y `.wasm` (se admiten `.gz` y `.br`). Máximo 500 MB.
+2. Sube el `.zip` exportado desde Unity. Junto a la subida hay una guía paso a paso
+   (`UnityWebGLGuide`) con la configuración que se pide:
+   - plataforma **Web** (WebGL) en *Build Profiles* / *Build Settings*;
+   - *Player Settings → Resolution and Presentation*: lienzo de **1920 × 1080** y plantilla
+     **PWA**, que hace que el canvas ocupe todo el reproductor y la pantalla completa;
+   - *Player Settings → Publishing Settings*: **Compression Format: Disabled**.
+
+   Antes de enviarlo, el navegador lo valida con `jszip` (`modules/student/webglBuild.js`): debe
+   contener `index.html`, las carpetas `Build/` y `TemplateData/`, y dentro de `Build/` los archivos
+   `.loader.js`, `.framework.js`, `.data` y `.wasm`. Un build comprimido (`.gz`, `.br`,
+   `.unityweb`) se rechaza, porque la API sirve los archivos del `.zip` sin la cabecera
+   `Content-Encoding` y el navegador no podría cargarlo; sin la plantilla PWA solo se avisa.
+   Máximo 500 MB.
 3. Añade portada, capturas, instrucciones y los controles del juego.
 4. Publica el proyecto y elige su visibilidad: `publico` (aparece en el catálogo), `por_enlace`
    (accesible solo con la URL) o `privado`.
 5. La ficha pública queda en `/games/<slug>`, donde el juego se ejecuta dentro de un `<iframe>` que
-   apunta a `${VITE_API_URL}/play/<projectId>/<versionId>/index.html`.
+   apunta a `${VITE_API_URL}/play/<projectId>/<versionId>/index.html`. El reproductor
+   (`components/game/GamePlayer`) es 16:9, muestra la portada hasta que se pulsa jugar y permite
+   reiniciar, abrir el juego en otra pestaña y ponerlo en pantalla completa; donde no existe la
+   Fullscreen API (Safari en iPhone) cubre la ventana con un modo inmersivo.
 
 ## Despliegue
 
