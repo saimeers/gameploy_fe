@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select'
 import { studentService } from '../../services/student.service'
 import { LIMITS }         from '@/lib/limits'
+import SlugEditor         from '../SlugEditor'
 
 const VISIBILITY_OPTIONS = [
   { value: 'privado',    label: 'Privado — solo tú' },
@@ -43,6 +44,19 @@ export default function ProjectInfoTab({ project, onUpdated }) {
       .catch(console.error)
   }, [])
 
+  // El catálogo solo trae las categorías y etiquetas activas; las que el
+  // proyecto ya tenía se conservan aunque un admin las haya desactivado.
+  const categoriaOptions = project.categoria && !categorias.some(c => c.id === project.categoria.id)
+    ? [...categorias, { ...project.categoria, inactiva: true }]
+    : categorias
+  const etiquetaOptions = [
+    ...etiquetas,
+    ...(project.etiquetas ?? [])
+      .map(pe => pe.etiqueta)
+      .filter(tag => tag && !etiquetas.some(e => e.id === tag.id))
+      .map(tag => ({ ...tag, inactiva: true })),
+  ]
+
   const toggleTag = (id) =>
     setSelectedTags(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
 
@@ -67,109 +81,117 @@ export default function ProjectInfoTab({ project, onUpdated }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <Card className="border-border/50 bg-card/60">
-        <CardHeader>
-          <CardTitle className="text-sm">Información general</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="space-y-4">
+      <SlugEditor project={project} onUpdated={onUpdated} />
 
-          <div className="space-y-1.5">
-            <Label>Nombre</Label>
-            <Input
-              maxLength={LIMITS.nombreProyecto}
-              {...register('nombre', { required: true })}
-              disabled={loading}
-            />
-          </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <Card className="border-border/50 bg-card/60">
+          <CardHeader>
+            <CardTitle className="text-sm">Información general</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
 
-          <div className="space-y-1.5">
-            <Label>Descripción</Label>
-            <Textarea
-              rows={3}
-              maxLength={LIMITS.descripcionProyecto}
-              {...register('descripcion')}
-              disabled={loading}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {(watch('descripcion') || '').length} / {LIMITS.descripcionProyecto}
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Instrucciones generales</Label>
-            <Textarea
-              rows={3}
-              placeholder="¿Cómo se juega? ¿Qué debe hacer el usuario?"
-              maxLength={LIMITS.instruccionesProyecto}
-              {...register('instrucciones')}
-              disabled={loading}
-            />
-            <p className="text-xs text-muted-foreground text-right">
-              {(watch('instrucciones') || '').length} / {LIMITS.instruccionesProyecto}
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Visibilidad</Label>
-              <Select
-                defaultValue={project.visibilidad}
-                onValueChange={val => setValue('visibilidad', val, { shouldDirty: true })}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {VISIBILITY_OPTIONS.map(o => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Nombre</Label>
+              <Input
+                maxLength={LIMITS.nombreProyecto}
+                {...register('nombre', { required: true })}
+                disabled={loading}
+              />
             </div>
 
             <div className="space-y-1.5">
-              <Label>Categoría</Label>
-              <Select
-                defaultValue={project.id_categoria ? String(project.id_categoria) : ''}
-                onValueChange={val => setValue('id_categoria', val, { shouldDirty: true })}
-              >
-                <SelectTrigger><SelectValue placeholder="Sin categoría" /></SelectTrigger>
-                <SelectContent>
-                  {categorias.map(cat => (
-                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Descripción</Label>
+              <Textarea
+                rows={3}
+                maxLength={LIMITS.descripcionProyecto}
+                {...register('descripcion')}
+                disabled={loading}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {(watch('descripcion') || '').length} / {LIMITS.descripcionProyecto}
+              </p>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <Label>Etiquetas</Label>
-            <div className="flex flex-wrap gap-2">
-              {etiquetas.map(tag => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  className={`rounded-full border px-3 py-1 text-xs transition-all ${
-                    selectedTags.includes(tag.id)
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border/50 text-muted-foreground hover:border-border'
-                  }`}
+            <div className="space-y-1.5">
+              <Label>Instrucciones generales</Label>
+              <Textarea
+                rows={3}
+                placeholder="¿Cómo se juega? ¿Qué debe hacer el usuario?"
+                maxLength={LIMITS.instruccionesProyecto}
+                {...register('instrucciones')}
+                disabled={loading}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {(watch('instrucciones') || '').length} / {LIMITS.instruccionesProyecto}
+              </p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Visibilidad</Label>
+                <Select
+                  defaultValue={project.visibilidad}
+                  onValueChange={val => setValue('visibilidad', val, { shouldDirty: true })}
                 >
-                  {tag.nombre}
-                </button>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {VISIBILITY_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-      <div className="flex justify-end">
-        <Button type="submit" size="sm" disabled={loading}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Guardar cambios
-        </Button>
-      </div>
-    </form>
+              <div className="space-y-1.5">
+                <Label>Categoría</Label>
+                <Select
+                  defaultValue={project.id_categoria ? String(project.id_categoria) : ''}
+                  onValueChange={val => setValue('id_categoria', val, { shouldDirty: true })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Sin categoría" /></SelectTrigger>
+                  <SelectContent>
+                    {categoriaOptions.map(cat => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>
+                        {cat.nombre}{cat.inactiva && ' (desactivada)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Etiquetas</Label>
+              <div className="flex flex-wrap gap-2">
+                {etiquetaOptions.map(tag => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    title={tag.inactiva ? 'Etiqueta desactivada: puedes quitarla, pero no volver a añadirla' : undefined}
+                    disabled={tag.inactiva && !selectedTags.includes(tag.id)}
+                    onClick={() => toggleTag(tag.id)}
+                    className={`rounded-full border px-3 py-1 text-xs transition-all ${
+                      selectedTags.includes(tag.id)
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border/50 text-muted-foreground hover:border-border'
+                    }`}
+                  >
+                    {tag.nombre}{tag.inactiva && ' (desactivada)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button type="submit" size="sm" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Guardar cambios
+          </Button>
+        </div>
+      </form>
+    </div>
   )
 }

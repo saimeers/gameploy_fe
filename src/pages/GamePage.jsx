@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import Navbar from '@/pages/home/Navbar'
 import { useTheme } from '@/components/theme-context'
 import {
@@ -33,16 +33,27 @@ export default function GamePage() {
     const activeVersion = project?.versiones?.[0]
     const [selectedImage, setSelectedImage] = useState(null)
     
+    const navigate = useNavigate()
+    // Slug del proyecto ya cargado, para no volver a pedirlo (y contar otra
+    // visita) al reemplazar en la URL un enlace antiguo por el actual.
+    const loadedSlug = useRef(null)
+
     useEffect(() => {
+        if (loadedSlug.current === slug) return
         api.get(`/public/games/${slug}`)
-            .then(res => setProject(res.data.data))
+            .then(res => {
+                const data = res.data.data
+                loadedSlug.current = data.slug
+                setProject(data)
+                if (data.slug !== slug) navigate(`/games/${data.slug}`, { replace: true })
+            })
             .catch(err => {
                 if (err.response?.status === 404) setNotFound(true)
                 else if (err.response?.status === 403) setForbidden(true)
                 else toast.error('Error al cargar el proyecto')
             })
             .finally(() => setLoading(false))
-    }, [slug])
+    }, [slug, navigate])
 
     useEffect(() => {
         if (!project) return
