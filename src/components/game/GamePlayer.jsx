@@ -124,16 +124,21 @@ function Cover({ title, version, coverUrl, onPlay }) {
 }
 
 /**
- * Reproductor de un build Unity WebGL servido por el backend.
+ * Reproductor de un build Unity WebGL.
  *
  * El marco es 16:9, igual que la resolución 1920×1080 que se pide al exportar;
  * con la plantilla PWA el canvas de Unity ocupa todo el iframe, así que basta
  * con poner el marco en pantalla completa para que el juego lo llene.
+ *
+ * @param {string} src enlace firmado del juego (vence en unas horas)
+ * @param {string} [newTabHref] página del frontend que abre "Nueva pestaña";
+ *   sin ella no se ofrece. Nunca es `src`: ese enlace caduca y no debe circular.
+ * @param {boolean} [autoStart] cargar el juego sin esperar a que se pulse jugar
  */
-export default function GamePlayer({ src, title, version, coverUrl }) {
+export default function GamePlayer({ src, title, version, coverUrl, newTabHref, autoStart = false }) {
   const frameRef = useRef(null)
   const iframeRef = useRef(null)
-  const [started, setStarted] = useState(false)
+  const [started, setStarted] = useState(autoStart)
   // Cambiarla monta un iframe nuevo, que vuelve a cargar el juego desde cero.
   const [session, setSession] = useState(0)
   const { isFullscreen, isFallback, enter, exit } = useFullscreen(frameRef)
@@ -205,11 +210,13 @@ export default function GamePlayer({ src, title, version, coverUrl }) {
               <RotateCcw /> <span className="hidden sm:inline">Reiniciar</span>
             </Button>
           )}
-          <Button variant="ghost" size="xs" asChild>
-            <a href={src} target="_blank" rel="noopener noreferrer" aria-label="Abrir en una pestaña nueva">
-              <ExternalLink /> <span className="hidden sm:inline">Nueva pestaña</span>
-            </a>
-          </Button>
+          {newTabHref && (
+            <Button variant="ghost" size="xs" asChild>
+              <a href={newTabHref} target="_blank" rel="noopener noreferrer" aria-label="Abrir en una pestaña nueva">
+                <ExternalLink /> <span className="hidden sm:inline">Nueva pestaña</span>
+              </a>
+            </Button>
+          )}
           <Button type="button" size="xs" onClick={toggleFullscreen}>
             <Maximize /> Pantalla completa
           </Button>

@@ -133,7 +133,7 @@ Cada módulo agrupa sus `pages/`, `components/`, `services/` y `hooks/`. El alia
 | `docente` | `/teacher` | Explorar el catálogo, comentar y calificar, revisar sus evaluaciones |
 | `admin` | `/admin` | Métricas, usuarios, aprobación de cuentas, proyectos y catálogo |
 | `pendiente` | `/pending` | Esperar la aprobación de un administrador |
-| Sin cuenta | `/`, `/games`, `/games/:slug` | Ver el catálogo público y jugar |
+| Sin cuenta | `/`, `/games`, `/games/:slug`, `/games/:slug/jugar` | Ver el catálogo público y jugar |
 
 Tras iniciar sesión, `useAuth` redirige según el rol devuelto por la API.
 
@@ -150,28 +150,39 @@ Tras iniciar sesión, `useAuth` redirige según el rol devuelto por la API.
    Antes de enviarlo, el navegador lo valida con `jszip` (`modules/student/webglBuild.js`): debe
    contener `index.html`, las carpetas `Build/` y `TemplateData/`, y dentro de `Build/` los archivos
    `.loader.js`, `.framework.js`, `.data` y `.wasm`. Un build comprimido (`.gz`, `.br`,
-   `.unityweb`) se rechaza, porque la API sirve los archivos del `.zip` sin la cabecera
-   `Content-Encoding` y el navegador no podría cargarlo; sin la plantilla PWA solo se avisa.
+   `.unityweb`) se rechaza, porque los archivos se sirven sin la cabecera `Content-Encoding` y el
+   navegador no podría cargarlo; sin la plantilla PWA solo se avisa.
    Máximo 500 MB.
 3. Añade portada, capturas, instrucciones y los controles del juego.
 4. Publica el proyecto y elige su visibilidad: `publico` (aparece en el catálogo), `por_enlace`
    (accesible solo con la URL) o `privado`.
-5. La ficha pública queda en `/games/<slug>`, donde el juego se ejecuta dentro de un `<iframe>` que
-   apunta a `${VITE_API_URL}/play/<projectId>/<versionId>/index.html`. El reproductor
-   (`components/game/GamePlayer`) es 16:9, muestra la portada hasta que se pulsa jugar y permite
-   reiniciar, abrir el juego en otra pestaña y ponerlo en pantalla completa; donde no existe la
-   Fullscreen API (Safari en iPhone) cubre la ventana con un modo inmersivo.
+5. La ficha pública queda en `/games/<slug>`, donde el juego se ejecuta dentro de un `<iframe>`. El
+   reproductor (`components/game/GamePlayer`) es 16:9, muestra la portada hasta que se pulsa jugar y
+   permite reiniciar, ponerlo en pantalla completa y abrirlo en otra pestaña; donde no existe la
+   Fullscreen API (Safari en iPhone) cubre la ventana con un modo inmersivo. "Nueva pestaña" abre
+   `/games/<slug>/jugar` (`pages/GamePlayPage`), el juego solo a toda la ventana, que pide la ficha
+   a la API con las mismas reglas de visibilidad. En los diálogos "Probar" del estudiante y del
+   admin ese botón no aparece.
 
    Mientras carga muestra el progreso real de Unity: la API inyecta en el `index.html` del juego un
    script que envía con `postMessage` los mensajes `boot`, `progress` (0 a 1), `ready` y `error`
    (fuente `gameploy-player`), y `useGameLoading` los convierte en porcentaje de descarga, fase de
    inicio y errores con botón de reintentar. Con una API sin ese script, el juego se da por listo
    cuando carga el iframe.
+   **Acceso a los archivos.** El juego y las imágenes se sirven desde el CDN
+   (`cdn-gameploy.saimers.dev`) con enlaces firmados que vencen en unas horas. El frontend no los
+   construye ni los pide aparte: la API añade `play_url` al build y `url` a cada imagen solo en las
+   respuestas que el usuario tiene derecho a ver (ficha según visibilidad, sus proyectos, panel de
+   admin), así que la ficha cuesta una sola petición. `gameUrl` (`components/files/fileFormat.js`)
+   toma ese enlace y, para builds subidos antes del CDN, recurre a `${VITE_API_URL}/play/...`, que
+   solo sirve la versión activa de proyectos publicados y no privados. El `.zip` original se
+   descarga con un enlace de 5 minutos que firma la API solo para el dueño
+   (`studentService.downloadFile`) o el admin (`adminService.downloadFile`).
 6. El estudiante puede cambiar el enlace (`SlugEditor`, en la pestaña Información). El slug
    anterior sigue funcionando: la ficha pública reemplaza en la URL un slug viejo por el actual sin
-   volver a pedir el proyecto, para no contar la visita dos veces.
+   volver a pedir el proyecto (`hooks/use-public-game.js`).
 7. Cada visita guarda país, región y ciudad (la API los calcula con una base offline y no guarda la
-   IP). `VisitOrigins` los muestra en el panel del admin, en el del estudiante y en la pestaña
+   IP), y cuenta una vez por visitante cada 30 minutos: recargar la ficha no suma visitas. `VisitOrigins` los muestra en el panel del admin, en el del estudiante y en la pestaña
    Visitas del detalle de cada proyecto.
 
 ## Acciones destructivas

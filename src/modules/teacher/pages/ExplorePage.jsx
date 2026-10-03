@@ -44,15 +44,7 @@ function StarRating({ value, onChange }) {
 }
 
 function GameCard({ project, onEvaluate }) {
-  const portadaFile = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')
-  const [portadaUrl, setPortadaUrl] = useState(null)
-
-  useEffect(() => {
-    if (!portadaFile?.ruta_storage) return
-    teacherService.getFileUrl(portadaFile.ruta_storage)
-      .then(res => setPortadaUrl(res.data.data.url))
-      .catch(() => {})
-  }, [portadaFile])
+  const portadaUrl = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')?.url
 
   return (
     <Card className="border-border/50 bg-card/60 flex flex-col hover:border-border/80 transition-colors overflow-hidden">

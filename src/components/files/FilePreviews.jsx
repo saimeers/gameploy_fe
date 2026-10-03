@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Calendar, Download, Eye, HardDrive, ImageOff, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Calendar, Download, Eye, HardDrive, ImageOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import GamePlayer from '@/components/game/GamePlayer'
@@ -16,22 +16,13 @@ export function FileMeta({ archivo, className = '' }) {
 }
 
 /**
- * Miniatura de una imagen del bucket. Pide su URL firmada al montarse y abre
- * la vista ampliada al hacer clic.
- * @param {(archivo) => Promise<string>} getUrl
+ * Miniatura de una imagen, con el enlace firmado (`archivo.url`) que trae la
+ * respuesta de la API. Abre la vista ampliada al hacer clic.
  */
-export function ImageThumb({ archivo, getUrl, label, aspect = 'aspect-video', actions }) {
-  const [url, setUrl] = useState(null)
+export function ImageThumb({ archivo, label, aspect = 'aspect-video', actions }) {
+  const url = archivo.url
   const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    getUrl(archivo)
-      .then(u => { if (!cancelled) setUrl(u) })
-      .catch(() => { if (!cancelled) setFailed(true) })
-    return () => { cancelled = true }
-  }, [archivo, getUrl])
 
   return (
     <figure className="group relative overflow-hidden rounded-lg border border-border/50 bg-muted/20">
@@ -42,15 +33,16 @@ export function ImageThumb({ archivo, getUrl, label, aspect = 'aspect-video', ac
         aria-label={`Ver ${label ?? archivo.nombre_archivo}`}
         className={`relative block w-full ${aspect}`}
       >
-        {url ? (
+        {url && !failed ? (
           <img
             src={url}
             alt={archivo.nombre_archivo}
+            onError={() => setFailed(true)}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <span className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            {failed ? <ImageOff className="h-5 w-5" /> : <Loader2 className="h-4 w-4 animate-spin" />}
+            <ImageOff className="h-5 w-5" />
           </span>
         )}
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import Navbar from '@/pages/home/Navbar'
 import { useTheme } from '@/components/theme-context'
 import {
-    Loader2, Gamepad2, User, Calendar, Tag,
+    Loader2, User, Calendar, Tag,
     Star,
     Eye,
     ArrowLeft,
@@ -12,59 +12,24 @@ import {
     Dialog,
     DialogContent,
 } from '@/components/ui/dialog'
-import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import api from '@/services/api'
 import ControlsViewer from '@/components/controls/ControlsViewer'
 import GamePlayer from '@/components/game/GamePlayer'
+import GameUnavailable from '@/components/game/GameUnavailable'
+import { gameUrl } from '@/components/files/fileFormat'
+import { usePublicGame } from '@/hooks/use-public-game'
+
+const gamePath = (slug) => `/games/${slug}`
 
 export default function GamePage() {
     const { slug } = useParams()
-    const [project, setProject] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [notFound, setNotFound] = useState(false)
-    const [forbidden, setForbidden] = useState(false)
-    const [mediaUrls, setMediaUrls] = useState({})
+    const { project, loading, error } = usePublicGame(slug, gamePath)
     const { theme, setTheme } = useTheme()
     const isDark = theme === 'dark'
     const activeVersion = project?.versiones?.[0]
     const [selectedImage, setSelectedImage] = useState(null)
-    
-    const navigate = useNavigate()
-    // Slug del proyecto ya cargado, para no volver a pedirlo (y contar otra
-    // visita) al reemplazar en la URL un enlace antiguo por el actual.
-    const loadedSlug = useRef(null)
-
-    useEffect(() => {
-        if (loadedSlug.current === slug) return
-        api.get(`/public/games/${slug}`)
-            .then(res => {
-                const data = res.data.data
-                loadedSlug.current = data.slug
-                setProject(data)
-                if (data.slug !== slug) navigate(`/games/${data.slug}`, { replace: true })
-            })
-            .catch(err => {
-                if (err.response?.status === 404) setNotFound(true)
-                else if (err.response?.status === 403) setForbidden(true)
-                else toast.error('Error al cargar el proyecto')
-            })
-            .finally(() => setLoading(false))
-    }, [slug, navigate])
-
-    useEffect(() => {
-        if (!project) return
-        const mediaFiles = activeVersion?.archivos?.filter(f => f.tipo !== 'juego_webgl') ?? []
-        mediaFiles.forEach(async file => {
-            try {
-                const res = await api.get(`/public/files/url?key=${encodeURIComponent(file.ruta_storage)}`)
-                setMediaUrls(prev => ({ ...prev, [file.id]: res.data.data.url }))
-            } catch { /* sin previsualización si la URL falla */ }
-        })
-    }, [project, activeVersion])
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-svh bg-background">
@@ -72,38 +37,14 @@ export default function GamePage() {
         </div>
     )
 
-    if (notFound) return (
-        <div className="flex flex-col items-center justify-center min-h-svh bg-background gap-4">
-            <Gamepad2 className="h-12 w-12 text-muted-foreground/30" />
-            <h1 className="text-xl font-semibold">Proyecto no encontrado</h1>
-            <p className="text-sm text-muted-foreground">
-                El enlace puede haber expirado o el proyecto fue eliminado.
-            </p>
-            <Link to="/"><Button variant="outline">Ir al inicio</Button></Link>
-        </div>
-    )
-
-    if (forbidden) return (
-        <div className="flex flex-col items-center justify-center min-h-svh bg-background gap-4">
-            <Gamepad2 className="h-12 w-12 text-muted-foreground/30" />
-            <h1 className="text-xl font-semibold">Proyecto no disponible</h1>
-            <p className="text-sm text-muted-foreground">
-                Este proyecto no está publicado o su acceso es privado.
-            </p>
-            <Link to="/"><Button variant="outline">Ir al inicio</Button></Link>
-        </div>
-    )
-
+    if (error) return <GameUnavailable reason={error} />
 
     const controles = project.controles ?? []
 
     const archivos = activeVersion?.archivos ?? []
     const capturas = archivos.filter(f => f.tipo === 'captura')
     const portada = archivos.find(f => f.tipo === 'portada')
-    const hasGame = archivos.some(f => f.tipo === 'juego_webgl')
-    const gameSrc = hasGame
-        ? `${import.meta.env.VITE_API_URL}/play/${project.id}/${activeVersion.id}/index.html`
-        : null
+    const gameSrc = gameUrl(project.id, activeVersion)
     const visitCount = project?._count?.visitas ?? 0
 
     const calificaciones = (project.comentarios ?? [])
@@ -193,7 +134,8 @@ export default function GamePage() {
                     src={gameSrc}
                     title={project.nombre}
                     version={activeVersion?.numero_version}
-                    coverUrl={portada ? mediaUrls[portada.id] : null}
+                    coverUrl={portada?.url}
+                    newTabHref={`/games/${project.slug}/jugar`}
                 />
 
                 {/* min-w-0: el diagrama de teclado es más ancho que un móvil y
@@ -252,15 +194,15 @@ export default function GamePage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                        {capturas.map(cap => mediaUrls[cap.id] && (
+                                        {capturas.map(cap => cap.url && (
                                             <button
                                                 key={cap.id}
                                                 type="button"
-                                                onClick={() => setSelectedImage(mediaUrls[cap.id])}
+                                                onClick={() => setSelectedImage(cap.url)}
                                                 className="group relative overflow-hidden rounded-lg border border-border/50"
                                             >
                                                 <img
-                                                    src={mediaUrls[cap.id]}
+                                                    src={cap.url}
                                                     alt="captura"
                                                     className="aspect-video w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                 />

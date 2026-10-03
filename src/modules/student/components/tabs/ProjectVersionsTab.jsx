@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import {
   Plus, CheckCircle, Upload, FileArchive, Image, Camera,
-  Loader2, FolderOpen, Trash2, Eye, Check, Play
+  Loader2, FolderOpen, Trash2, Eye, Check, Play, Download
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,7 @@ import { LIMITS }         from '@/lib/limits'
 import { inspectWebGLZip } from '../../webglBuild'
 import UnityWebGLGuide     from '../UnityWebGLGuide'
 import { BuildPreviewDialog, FileMeta } from '@/components/files/FilePreviews'
-import { formatBytes, formatDateTime, playUrl } from '@/components/files/fileFormat'
+import { formatBytes, formatDateTime, gameUrl } from '@/components/files/fileFormat'
 
 /** Etiqueta e icono de cada tipo de archivo en la lista de herencia. */
 const INHERIT_FILE_CFG = {
@@ -78,7 +78,7 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
   // Imagen ampliada: { url, file }
   const [selectedPreview, setSelectedPreview] = useState(null)
   const [playing, setPlaying] = useState(false)
-  const [previews, setPreviews] = useState({})
+  const [downloading, setDownloading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const inputRef = useRef()
 
@@ -91,17 +91,6 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
     portada: { label: 'Portada', icon: Image, accept: 'image/*', desc: 'Una imagen de presentación (PNG, JPG)' },
     captura: { label: 'Capturas', icon: Camera, accept: 'image/*', desc: 'Capturas de pantalla — puedes subir múltiples' },
   }[fileType]
-
-  // Load presigned URLs for existing image files
-  useEffect(() => {
-    existingFiles.forEach(async (file) => {
-      if (previews[file.id]) return
-      try {
-        const res = await studentService.getFileUrl(file.ruta_storage)
-        setPreviews(prev => ({ ...prev, [file.id]: res.data.data.url }))
-      } catch { /* sin previsualización si la URL falla */ }
-    })
-  }, [existingFiles])
 
   const handleFile = async (e) => {
     const files = isCaptura ? Array.from(e.target.files) : [e.target.files?.[0]]
@@ -141,12 +130,8 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
         const formData = new FormData()
         formData.append('file', file)
         formData.append('fileType', fileType)
+        // La respuesta trae el archivo con su enlace firmado (url o play_url).
         const res = await studentService.uploadFile(projectId, versionId, formData, setProgress)
-        // Create local preview for images without reloading
-        if (isPortada || isCaptura) {
-          const localUrl = URL.createObjectURL(file)
-          setPreviews(prev => ({ ...prev, [res.data.data.id]: localUrl }))
-        }
         onFileAdded(res.data.data)
         toast.success(`${isCaptura ? 'Captura' : cfg.label} subida`)
       } catch (err) {
@@ -164,13 +149,21 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
     try {
       await studentService.deleteFile(projectId, versionId, file.id)
       onFileDeleted(file.id)
-      // Revoke object URL if it was local
-      if (previews[file.id]?.startsWith('blob:')) {
-        URL.revokeObjectURL(previews[file.id])
-      }
-      setPreviews(prev => { const n = { ...prev }; delete n[file.id]; return n })
       toast.success('Archivo eliminado')
     } catch { toast.error('Error al eliminar') }
+  }
+
+  /** Descarga el .zip original con un enlace de 5 minutos que firma la API. */
+  const downloadBuild = async (file) => {
+    setDownloading(true)
+    try {
+      const res = await studentService.downloadFile(projectId, versionId, file.id)
+      window.location.assign(res.data.data.url)
+    } catch {
+      toast.error('No se pudo descargar el archivo')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   const busy = uploading || validating
@@ -193,14 +186,14 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
         <div className={`grid gap-2 ${isCaptura ? 'grid-cols-3' : 'grid-cols-1'}`}>
           {existingFiles.map(file => (
             <div key={file.id} className="relative group rounded-lg overflow-hidden border border-border/50 bg-muted/20">
-              {previews[file.id] ? (
+              {file.url ? (
                 <button
                   type="button"
-                  onClick={() => setSelectedPreview({ url: previews[file.id], file })}
+                  onClick={() => setSelectedPreview({ url: file.url, file })}
                   className="relative w-full h-full group"
                 >
                   <img
-                    src={previews[file.id]}
+                    src={file.url}
                     alt={file.nombre_archivo}
                     className={` w-full object-cover transition-transform duration-300 group-hover:scale-105 ${isPortada ? 'h-40' : 'h-24'} `}
                   />
@@ -212,7 +205,7 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
                 </button>
               ) : (
                 <div className={`flex items-center justify-center bg-muted/30 ${isPortada ? 'h-40' : 'h-24'}`}>
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <Image className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}
               <button
@@ -246,10 +239,21 @@ function UploadZone({ versionId, versionLabel, projectId, projectName, fileType,
           <Button type="button" size="xs" onClick={() => setPlaying(true)}>
             <Play /> Probar
           </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            title="Descargar .zip"
+            aria-label="Descargar .zip"
+            disabled={downloading}
+            onClick={() => downloadBuild(existingFiles[0])}
+          >
+            {downloading ? <Loader2 className="animate-spin" /> : <Download />}
+          </Button>
           <BuildPreviewDialog
             open={playing}
             onOpenChange={setPlaying}
-            src={playUrl(projectId, versionId)}
+            src={gameUrl(projectId, { id: versionId, archivos: existingFiles })}
             title={projectName ?? 'Vista previa'}
             version={versionLabel}
           />

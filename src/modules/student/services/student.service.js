@@ -80,8 +80,9 @@ export const studentService = {
   deleteFile: (projectId, versionId, fileId) =>
     api.delete(`/projects/${projectId}/versions/${versionId}/files/${fileId}`),
 
-  getFileUrl: (key) =>
-    api.get(`/public/files/url?key=${encodeURIComponent(key)}`),
+  /** Enlace de 5 minutos para descargar el archivo original (el .zip del juego). */
+  downloadFile: (projectId, versionId, fileId) =>
+    api.get(`/projects/${projectId}/versions/${versionId}/files/${fileId}/download`),
 
   getPublicGame: (slug) =>
     api.get(`/public/games/${slug}`),

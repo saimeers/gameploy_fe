@@ -9,7 +9,6 @@ vi.mock('../services/profile.service', () => ({
   profileService: {
     getProfile: vi.fn(),
     updateProfile: vi.fn(),
-    getFileUrl: vi.fn(() => Promise.resolve({ data: { data: { url: 'https://portada' } } })),
   },
 }))
 

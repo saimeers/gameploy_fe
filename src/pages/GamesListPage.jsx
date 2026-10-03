@@ -14,15 +14,7 @@ import api           from '@/services/api'
 import { LIMITS }    from '@/lib/limits'
 
 function GameCard({ project }) {
-  const portadaFile = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')
-  const [portadaUrl, setPortadaUrl] = useState(null)
-
-  useEffect(() => {
-    if (!portadaFile?.ruta_storage) return
-    api.get(`/public/files/url?key=${encodeURIComponent(portadaFile.ruta_storage)}`)
-      .then(res => setPortadaUrl(res.data.data.url))
-      .catch(() => {})
-  }, [portadaFile])
+  const portadaUrl = project.versiones?.[0]?.archivos?.find(a => a.tipo === 'portada')?.url
 
   return (
     <Link to={`/games/${project.slug}`} className="group">

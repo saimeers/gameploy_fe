@@ -15,7 +15,16 @@ export function formatDateTime(value) {
   })
 }
 
-/** URL del build de una versión, la misma que usa la ficha pública del juego. */
-export function playUrl(projectId, versionId) {
-  return `${import.meta.env.VITE_API_URL}/play/${projectId}/${versionId}/index.html`
+/**
+ * Dirección del juego de una versión, o null si no tiene build.
+ *
+ * La API añade `play_url` al build en las respuestas que el usuario tiene
+ * derecho a ver: un enlace firmado al CDN que vence a las pocas horas. Los
+ * builds subidos antes del CDN no lo tienen y se cargan desde /play, que solo
+ * sirve la versión activa de un proyecto publicado y no privado.
+ */
+export function gameUrl(projectId, version) {
+  const build = version?.archivos?.find(a => a.tipo === 'juego_webgl')
+  if (!build) return null
+  return build.play_url ?? `${import.meta.env.VITE_API_URL}/play/${projectId}/${version.id}/index.html`
 }

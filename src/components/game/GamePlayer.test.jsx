@@ -3,7 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import GamePlayer from './GamePlayer'
 
-const SRC = 'http://localhost:3000/api/v1/play/p1/v1/index.html'
+const SRC = 'https://cdn-gameploy.saimers.dev/t/1790000000.firma/builds/b1/index.html'
 
 const renderPlayer = (props = {}) =>
   render(<GamePlayer src={SRC} title="Memoria Cognitiva" version="1.2.0" {...props} />)
@@ -60,12 +60,24 @@ describe('GamePlayer', () => {
     expect(screen.getByText('Conectando con el servidor…')).toBeInTheDocument()
   })
 
-  it('ofrece abrir el juego en una pestaña nueva', () => {
-    renderPlayer()
+  it('abre en una pestaña nueva la página del frontend, nunca el enlace del juego', () => {
+    renderPlayer({ newTabHref: '/games/memoria/jugar' })
 
     const link = screen.getByRole('link', { name: 'Abrir en una pestaña nueva' })
-    expect(link).toHaveAttribute('href', SRC)
+    expect(link).toHaveAttribute('href', '/games/memoria/jugar')
     expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('sin página para la pestaña nueva, no ofrece el botón', () => {
+    renderPlayer()
+
+    expect(screen.queryByRole('link', { name: 'Abrir en una pestaña nueva' })).not.toBeInTheDocument()
+  })
+
+  it('con autoStart carga el juego sin pasar por la portada', () => {
+    renderPlayer({ autoStart: true })
+
+    expect(screen.getByTitle('Memoria Cognitiva')).toHaveAttribute('src', SRC)
   })
 
   it('pone el marco del juego en pantalla completa con la Fullscreen API', async () => {

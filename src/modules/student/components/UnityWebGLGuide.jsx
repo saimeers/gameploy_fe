@@ -390,16 +390,10 @@ export default function UnityWebGLGuide() {
         ))}
       </dl>
 
-      <div className="space-y-1 text-xs text-muted-foreground">
-        <p>
-          Luego comprime en un .zip <b className="font-medium text-foreground">el contenido</b> de la
-          carpeta del build: index.html, Build y TemplateData.
-        </p>
-        <p>
-          Para actualizar un juego ya publicado, crea una versión nueva en lugar de reemplazar el
-          .zip: la plantilla PWA guarda el build en la caché del navegador de quien ya lo jugó.
-        </p>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        Luego comprime en un .zip <b className="font-medium text-foreground">el contenido</b> de la
+        carpeta del build: index.html, Build y TemplateData.
+      </p>
 
       <GuideDialog open={open} onOpenChange={setOpen} />
     </div>

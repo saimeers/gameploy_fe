@@ -16,7 +16,7 @@ import HoldConfirmDialog from '@/components/HoldConfirmDialog'
 import VisitOrigins     from '@/components/visits/VisitOrigins'
 import BuildContents    from '@/components/files/BuildContents'
 import { BuildPreviewDialog, FileMeta, ImageThumb } from '@/components/files/FilePreviews'
-import { formatBytes, playUrl } from '@/components/files/fileFormat'
+import { formatBytes, gameUrl } from '@/components/files/fileFormat'
 
 const STATUS_CFG = {
   publicado: { label: 'Publicado', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -120,7 +120,7 @@ function BuildCard({ project, version, archivo, onDelete, onDownload, downloadin
       <BuildPreviewDialog
         open={playing}
         onOpenChange={setPlaying}
-        src={playUrl(project.id, version.id)}
+        src={gameUrl(project.id, version)}
         title={project.nombre}
         version={version.numero_version}
       />
@@ -129,7 +129,7 @@ function BuildCard({ project, version, archivo, onDelete, onDownload, downloadin
 }
 
 /** Archivos de una versión: el build y las imágenes con vista previa. */
-function VersionFiles({ project, version, getUrl, onDelete, onDownload, downloading }) {
+function VersionFiles({ project, version, onDelete, onDownload, downloading }) {
   const archivos = version.archivos ?? []
   const build = archivos.find(a => a.tipo === 'juego_webgl')
   const portada = archivos.find(a => a.tipo === 'portada')
@@ -173,7 +173,7 @@ function VersionFiles({ project, version, getUrl, onDelete, onDownload, download
           {portada && (
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-muted-foreground">Portada</p>
-              <ImageThumb archivo={portada} getUrl={getUrl} label="Portada" actions={deleteAction(portada)} />
+              <ImageThumb archivo={portada} label="Portada" actions={deleteAction(portada)} />
             </div>
           )}
           {capturas.length > 0 && (
@@ -184,7 +184,6 @@ function VersionFiles({ project, version, getUrl, onDelete, onDownload, download
                   <ImageThumb
                     key={captura.id}
                     archivo={captura}
-                    getUrl={getUrl}
                     label={`Captura ${i + 1}`}
                     actions={deleteAction(captura)}
                   />
@@ -237,18 +236,14 @@ export default function ProjectDetailAdminPage() {
     [id]
   )
 
-  const getImageUrl = useCallback(
-    (archivo) => adminService.getFileUrl(archivo.ruta_storage).then(res => res.data.data.url),
-    []
-  )
-
-  const openFile = async (archivo) => {
+  /** Descarga el archivo original con un enlace de 5 minutos que firma la API. */
+  const downloadFile = async (archivo) => {
     setOpeningFile(archivo.id)
     try {
-      const res = await adminService.getFileUrl(archivo.ruta_storage)
-      window.open(res.data.data.url, '_blank', 'noopener')
+      const res = await adminService.downloadFile(archivo.id)
+      window.location.assign(res.data.data.url)
     } catch {
-      toast.error('No se pudo abrir el archivo')
+      toast.error('No se pudo descargar el archivo')
     } finally {
       setOpeningFile(null)
     }
@@ -490,9 +485,8 @@ export default function ProjectDetailAdminPage() {
                   <VersionFiles
                     project={project}
                     version={version}
-                    getUrl={getImageUrl}
                     onDelete={setFileToDelete}
-                    onDownload={openFile}
+                    onDownload={downloadFile}
                     downloading={openingFile}
                   />
                 </CardContent>

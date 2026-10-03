@@ -5,7 +5,6 @@ export const teacherService = {
   getCategorias:  ()       => api.get('/search/categorias'),
   getEtiquetas:   ()       => api.get('/search/etiquetas'),
   getGameBySlug:  (slug)   => api.get(`/public/games/${slug}`),
-  getFileUrl:     (key)    => api.get(`/public/files/url?key=${encodeURIComponent(key)}`),
 
   addComment: (projectId, data) =>
     api.post(`/projects/${projectId}/comments`, data),

@@ -35,8 +35,9 @@ export const adminService = {
   getProject: (projectId) =>
     api.get(`/admin/projects/${projectId}`),
 
-  getFileUrl: (key) =>
-    api.get(`/public/files/url?key=${encodeURIComponent(key)}`),
+  /** Enlace de 5 minutos para descargar el archivo original (el .zip del juego). */
+  downloadFile: (fileId) =>
+    api.get(`/admin/files/${fileId}/download`),
 
   deleteFile: (fileId) =>
     api.delete(`/admin/files/${fileId}`),

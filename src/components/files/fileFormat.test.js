@@ -1,15 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { formatBytes, formatDateTime } from './fileFormat'
+import { gameUrl } from './fileFormat'
 
-describe('fileFormat', () => {
-  it('formatea tamaños', () => {
-    expect(formatBytes(512)).toBe('512 B')
-    expect(formatBytes('2048')).toBe('2.0 KB')
-    expect(formatBytes(15 * 1024 * 1024)).toBe('15.0 MB')
+describe('gameUrl', () => {
+  it('usa el enlace firmado que entrega la API', () => {
+    const version = {
+      id: 'v1',
+      archivos: [
+        { tipo: 'portada', url: 'https://cdn/t/1.x/media/m1/p.png' },
+        { tipo: 'juego_webgl', play_url: 'https://cdn/t/1.x/builds/b1/index.html' },
+      ],
+    }
+
+    expect(gameUrl('p1', version)).toBe('https://cdn/t/1.x/builds/b1/index.html')
   })
 
-  it('formatea la fecha de subida con hora', () => {
-    expect(formatDateTime('2026-10-03T19:20:00Z')).toMatch(/2026/)
-    expect(formatDateTime(null)).toBe('—')
+  it('para builds anteriores al CDN, usa /play de la versión', () => {
+    const version = { id: 'v1', archivos: [{ tipo: 'juego_webgl' }] }
+
+    expect(gameUrl('p1', version)).toMatch(/\/play\/p1\/v1\/index\.html$/)
+  })
+
+  it('devuelve null si la versión no tiene build', () => {
+    expect(gameUrl('p1', { id: 'v1', archivos: [{ tipo: 'portada' }] })).toBeNull()
+    expect(gameUrl('p1', undefined)).toBeNull()
   })
 })
