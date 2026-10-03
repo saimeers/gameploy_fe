@@ -1,10 +1,82 @@
 import { useRef, useState } from 'react'
 import {
-  ExternalLink, Gamepad2, Loader2, Maximize, Minimize, Play, RotateCcw,
+  AlertTriangle, ExternalLink, Gamepad2, Loader2, Maximize, Minimize, Play, RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useFullscreen } from '@/hooks/use-fullscreen'
 import { cn } from '@/lib/utils'
+import { useGameLoading } from './useGameLoading'
+
+/** Segundos de carga a partir de los cuales se explica por qué tarda. */
+const SLOW_LOAD_SECONDS = 8
+
+/** Pantalla de carga sobre el iframe, con el progreso real que envía Unity. */
+function LoadingOverlay({ title, phase, downloadPercent, elapsed, error, onRetry }) {
+  if (phase === 'error') return (
+    <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-6 text-center text-white">
+      <AlertTriangle className="h-9 w-9 text-amber-400" />
+      <div className="space-y-1">
+        <p className="font-semibold">No se pudo cargar el juego</p>
+        {error && <p className="max-w-md text-xs text-white/50">{error}</p>}
+      </div>
+      <Button type="button" size="sm" onClick={onRetry}>
+        <RotateCcw /> Reintentar
+      </Button>
+    </div>
+  )
+
+  const label = {
+    connecting: 'Conectando con el servidor…',
+    downloading: `Descargando el juego · ${downloadPercent}%`,
+    starting: 'Iniciando el juego…',
+  }[phase]
+  const indeterminate = phase === 'connecting' || phase === 'starting'
+
+  return (
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black px-6 text-center text-white">
+      <div className="space-y-1">
+        <p className="text-[11px] uppercase tracking-widest text-white/40">Cargando</p>
+        <p className="text-lg font-semibold sm:text-xl">{title}</p>
+      </div>
+
+      <div className="w-full max-w-sm space-y-2">
+        <div
+          role="progressbar"
+          aria-label="Progreso de carga del juego"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={indeterminate ? undefined : downloadPercent}
+          className="relative h-1.5 overflow-hidden rounded-full bg-white/10"
+        >
+          {indeterminate ? (
+            <div className={cn(
+              'absolute inset-y-0 rounded-full bg-primary',
+              phase === 'starting' ? 'inset-x-0 animate-pulse' : 'w-1/3 animate-[gameploy-slide_1.2s_ease-in-out_infinite]',
+            )} />
+          ) : (
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-fuchsia-400 transition-[width] duration-300"
+              style={{ width: `${downloadPercent}%` }}
+            />
+          )}
+        </div>
+        <div className="flex items-center justify-between text-xs text-white/60" aria-live="polite">
+          <span className="flex items-center gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" /> {label}
+          </span>
+          <span className="font-mono tabular-nums text-white/40">{elapsed}s</span>
+        </div>
+      </div>
+
+      {elapsed >= SLOW_LOAD_SECONDS && (
+        <p className="max-w-sm text-xs text-white/40">
+          La primera vez tarda más: el navegador descarga el juego completo y lo guarda,
+          así que las siguientes partidas abren mucho más rápido.
+        </p>
+      )}
+    </div>
+  )
+}
 
 /** Portada del reproductor antes de cargar el juego. */
 function Cover({ title, version, coverUrl, onPlay }) {
@@ -62,10 +134,10 @@ export default function GamePlayer({ src, title, version, coverUrl }) {
   const frameRef = useRef(null)
   const iframeRef = useRef(null)
   const [started, setStarted] = useState(false)
-  const [loaded, setLoaded] = useState(false)
   // Cambiarla monta un iframe nuevo, que vuelve a cargar el juego desde cero.
   const [session, setSession] = useState(0)
   const { isFullscreen, isFallback, enter, exit } = useFullscreen(frameRef)
+  const loading = useGameLoading(iframeRef, started, session)
 
   if (!src) return (
     <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/40">
@@ -89,17 +161,20 @@ export default function GamePlayer({ src, title, version, coverUrl }) {
     focusGame()
   }
 
-  const restart = () => {
-    setLoaded(false)
-    setSession(s => s + 1)
-  }
+  const restart = () => setSession(s => s + 1)
 
   const handleLoad = () => {
-    setLoaded(true)
+    loading.handleFrameLoad()
     focusGame()
   }
 
-  const status = !started ? 'Listo para jugar' : loaded ? 'En ejecución' : 'Cargando…'
+  const status = !started
+    ? 'Listo para jugar'
+    : loading.phase === 'error'
+      ? 'Error al cargar'
+      : loading.loading
+        ? loading.phase === 'downloading' ? `Cargando… ${loading.downloadPercent}%` : 'Cargando…'
+        : 'En ejecución'
 
   return (
     <section
@@ -112,7 +187,11 @@ export default function GamePlayer({ src, title, version, coverUrl }) {
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground" aria-live="polite">
           <span className={cn(
             'h-2 w-2 shrink-0 rounded-full',
-            !started ? 'bg-muted-foreground/40' : loaded ? 'bg-emerald-500' : 'animate-pulse bg-amber-500',
+            !started
+              ? 'bg-muted-foreground/40'
+              : loading.phase === 'error'
+                ? 'bg-destructive'
+                : loading.loading ? 'animate-pulse bg-amber-500' : 'bg-emerald-500',
           )} />
           <span className="shrink-0">{status}</span>
           {started && (
@@ -159,11 +238,15 @@ export default function GamePlayer({ src, title, version, coverUrl }) {
               allowFullScreen
               onLoad={handleLoad}
             />
-            {!loaded && (
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black text-white/70">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-[11px] uppercase tracking-widest">Cargando juego…</p>
-              </div>
+            {(loading.loading || loading.phase === 'error') && (
+              <LoadingOverlay
+                title={title}
+                phase={loading.phase}
+                downloadPercent={loading.downloadPercent}
+                elapsed={loading.elapsed}
+                error={loading.error}
+                onRetry={restart}
+              />
             )}
           </>
         ) : (

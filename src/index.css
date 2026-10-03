@@ -127,3 +127,9 @@
   }
 }
 
+
+/* Barra de carga indeterminada del reproductor de juegos */
+@keyframes gameploy-slide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}

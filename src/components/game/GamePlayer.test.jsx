@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import GamePlayer from './GamePlayer'
 
@@ -39,8 +39,10 @@ describe('GamePlayer', () => {
     const iframe = screen.getByTitle('Memoria Cognitiva')
     expect(iframe).toHaveAttribute('src', SRC)
     expect(iframe.getAttribute('allow')).toContain('gamepad')
-    expect(screen.getByText('Cargando juego…')).toBeInTheDocument()
+    expect(screen.getByText('Conectando con el servidor…')).toBeInTheDocument()
 
+    // Sin mensajes de progreso (API antigua o página que no es Unity), basta con
+    // que el iframe cargue para darlo por listo.
     fireEvent.load(iframe)
     expect(screen.getByText('En ejecución')).toBeInTheDocument()
   })
@@ -55,7 +57,7 @@ describe('GamePlayer', () => {
     await user.click(screen.getByRole('button', { name: 'Reiniciar juego' }))
 
     expect(screen.getByTitle('Memoria Cognitiva')).not.toBe(first)
-    expect(screen.getByText('Cargando juego…')).toBeInTheDocument()
+    expect(screen.getByText('Conectando con el servidor…')).toBeInTheDocument()
   })
 
   it('ofrece abrir el juego en una pestaña nueva', () => {
@@ -107,5 +109,87 @@ describe('GamePlayer', () => {
     await user.click(screen.getByRole('button', { name: 'Salir de pantalla completa' }))
 
     expect(screen.getByTestId('game-frame')).not.toHaveAttribute('data-fullscreen')
+  })
+
+  describe('progreso de carga', () => {
+    /** Mensaje del script que la API inyecta en el index.html del juego. */
+    const post = (iframe, data) => act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { source: 'gameploy-player', ...data },
+        source: iframe.contentWindow,
+      }))
+    })
+
+    const startGame = async () => {
+      const user = userEvent.setup()
+      renderPlayer()
+      await user.click(screen.getByRole('button', { name: 'Jugar Memoria Cognitiva' }))
+      return { user, iframe: screen.getByTitle('Memoria Cognitiva') }
+    }
+
+    it('muestra el porcentaje de descarga que envía Unity', async () => {
+      const { iframe } = await startGame()
+
+      post(iframe, { type: 'boot' })
+      post(iframe, { type: 'progress', value: 0.45 })
+
+      expect(screen.getByText('Descargando el juego · 50%')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
+      expect(screen.getByText('Cargando… 50%')).toBeInTheDocument()
+    })
+
+    it('sigue cargando aunque el iframe termine, hasta que Unity avisa que está listo', async () => {
+      const { iframe } = await startGame()
+      post(iframe, { type: 'progress', value: 0.2 })
+
+      fireEvent.load(iframe)
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
+
+      post(iframe, { type: 'progress', value: 0.95 })
+      expect(screen.getByText('Iniciando el juego…')).toBeInTheDocument()
+
+      post(iframe, { type: 'ready' })
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+      expect(screen.getByText('En ejecución')).toBeInTheDocument()
+    })
+
+    it('ignora mensajes de otras ventanas', async () => {
+      await startGame()
+
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { source: 'gameploy-player', type: 'ready' },
+          source: window,
+        }))
+      })
+
+      expect(screen.getByText('Conectando con el servidor…')).toBeInTheDocument()
+    })
+
+    it('muestra el error y permite reintentar', async () => {
+      const { user, iframe } = await startGame()
+
+      post(iframe, { type: 'error', message: 'Out of memory' })
+      expect(screen.getByRole('alert')).toHaveTextContent('No se pudo cargar el juego')
+      expect(screen.getByText('Out of memory')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /Reintentar/ }))
+      expect(screen.getByTitle('Memoria Cognitiva')).not.toBe(iframe)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('explica la espera cuando la carga se alarga', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        const { iframe } = await startGame()
+        post(iframe, { type: 'progress', value: 0.1 })
+
+        act(() => { vi.advanceTimersByTime(9000) })
+
+        expect(screen.getByText(/La primera vez tarda más/)).toBeInTheDocument()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })
