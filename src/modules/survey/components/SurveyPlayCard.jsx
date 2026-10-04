@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MessageSquareHeart, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { canOffer, postponeInvite, surveyHref } from '../invite'
-
-/** Minutos jugando antes de ofrecer la encuesta. */
-export const PLAY_MINUTES = 3
+import { PLAY_MINUTES, canOffer, postponeInvite, surveyHref } from '../invite'
 
 /**
  * Invitación discreta debajo del reproductor, cuando el juego lleva unos

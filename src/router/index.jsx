@@ -33,6 +33,7 @@ import UserProfileAdminPage   from '@/modules/admin/pages/UserProfileAdminPage'
 // Perfil (cualquier rol con sesión)
 import ProfilePage from '@/modules/profile/pages/ProfilePage'
 import CatalogAdminPage from '@/modules/admin/pages/CatalogAdminPage'
+import SurveyResultsPage from '@/modules/admin/pages/SurveyResultsPage'
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
@@ -88,6 +89,7 @@ export const router = createBrowserRouter([
       { path: '/admin/projects', element: <ProjectsAdminPage /> },
       { path: '/admin/projects/:id', element: <ProjectDetailAdminPage /> },
       { path: '/admin/catalog', element: <CatalogAdminPage /> },
+      { path: '/admin/encuestas', element: <SurveyResultsPage /> },
     ],
   },
 

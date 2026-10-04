@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import api from '@/services/api'
 import { useAuthStore } from '@/store/authStore'
-import { canOffer, checkInvite, postponeInvite, safeReturnPath, useSurveyInvite } from './invite'
+import { PLAY_MINUTES, canOffer, checkInvite, postponeInvite, safeReturnPath, useSurveyInvite } from './invite'
 import SurveyInviteDialog from './components/SurveyInviteDialog'
-import SurveyPlayCard, { PLAY_MINUTES } from './components/SurveyPlayCard'
+import SurveyPlayCard from './components/SurveyPlayCard'
 
 vi.mock('@/services/api', () => ({ default: { get: vi.fn(), post: vi.fn() } }))
 

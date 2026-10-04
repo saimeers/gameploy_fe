@@ -17,6 +17,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const POSTPONE_DAYS = 3
 const MAX_POSTPONES = 2
 
+/** Minutos con un juego en ejecución antes de ofrecer la encuesta. */
+export const PLAY_MINUTES = 3
+
 // El almacenamiento puede fallar (modo privado, cookies bloqueadas): sin él,
 // simplemente no se recuerda nada.
 const readLocal = () => {
