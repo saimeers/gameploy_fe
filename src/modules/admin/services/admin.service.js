@@ -58,4 +58,12 @@ export const adminService = {
 
   deleteComment: (commentId) =>
     api.delete(`/admin/comments/${commentId}`),
+
+  // Encuesta de usabilidad (SUS) y experiencia
+  /** @param {{ dias?: number, perfil?: string, momento?: string }} params */
+  getSurveySummary: (params) =>
+    api.get('/admin/encuestas/resumen', { params }),
+
+  downloadSurveyCsv: (params) =>
+    api.get('/admin/encuestas/export.csv', { params, responseType: 'blob' }),
 }

@@ -13,6 +13,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { studentService }   from '../services/student.service'
+import { checkInvite } from '@/modules/survey/invite'
 import ProjectInfoTab       from '../components/tabs/ProjectInfoTab'
 import ProjectControlsTab   from '../components/tabs/ProjectControlsTab'
 import ProjectVersionsTab   from '../components/tabs/ProjectVersionsTab'
@@ -75,6 +76,8 @@ export default function ProjectDetailPage() {
         description: `Tu juego ya es accesible en /games/${project.slug}`,
       })
       refreshProject()
+      // Publicar el primer proyecto es el momento de pedir su opinión
+      checkInvite({ force: true })
     } catch (err) {
       toast.error(err.response?.data?.message ?? 'Error al publicar')
     } finally {

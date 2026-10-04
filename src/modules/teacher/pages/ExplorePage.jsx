@@ -16,6 +16,7 @@ import { Label }    from '@/components/ui/label'
 import { toast }    from 'sonner'
 import { teacherService } from '../services/teacher.service'
 import { LIMITS }         from '@/lib/limits'
+import { checkInvite }    from '@/modules/survey/invite'
 
 function StarRating({ value, onChange }) {
   const [hovered, setHovered] = useState(0)
@@ -173,6 +174,8 @@ export default function ExplorePage() {
       setCalificacion(0)
       setContenido('')
       refreshProjects()
+      // La primera evaluación es el momento de pedir su opinión
+      checkInvite({ force: true })
     } catch (err) {
       toast.error(err.response?.data?.message ?? 'Error al enviar evaluación')
     } finally { setSubmitting(false) }

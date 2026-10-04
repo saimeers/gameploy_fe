@@ -3,6 +3,7 @@ import { Users, Gamepad2, Eye, Clock, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { adminService } from '../services/admin.service'
 import VisitOrigins from '@/components/visits/VisitOrigins'
+import SurveySummaryCard from '../components/survey/SurveySummaryCard'
 
 export default function AdminDashboard() {
   const [stats, setStats]     = useState(null)
@@ -50,6 +51,8 @@ export default function AdminDashboard() {
           </Card>
         ))}
       </div>
+
+      <SurveySummaryCard />
 
       <VisitOrigins
         load={loadVisits}

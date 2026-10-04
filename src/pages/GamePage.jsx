@@ -7,6 +7,7 @@ import {
     Star,
     Eye,
     ArrowLeft,
+    MessageSquareHeart,
 } from 'lucide-react'
 import {
     Dialog,
@@ -20,6 +21,8 @@ import GamePlayer from '@/components/game/GamePlayer'
 import GameUnavailable from '@/components/game/GameUnavailable'
 import { gameUrl } from '@/components/files/fileFormat'
 import { usePublicGame } from '@/hooks/use-public-game'
+import SurveyPlayCard from '@/modules/survey/components/SurveyPlayCard'
+import { surveyHref } from '@/modules/survey/invite'
 
 const gamePath = (slug) => `/games/${slug}`
 
@@ -30,6 +33,7 @@ export default function GamePage() {
     const isDark = theme === 'dark'
     const activeVersion = project?.versiones?.[0]
     const [selectedImage, setSelectedImage] = useState(null)
+    const [running, setRunning] = useState(false)
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-svh bg-background">
@@ -136,7 +140,10 @@ export default function GamePage() {
                     version={activeVersion?.numero_version}
                     coverUrl={portada?.url}
                     newTabHref={`/games/${project.slug}/jugar`}
+                    onRunningChange={setRunning}
                 />
+
+                <SurveyPlayCard running={running} />
 
                 {/* min-w-0: el diagrama de teclado es más ancho que un móvil y
                     hace scroll dentro de su tarjeta; sin él, ensancharía la columna. */}
@@ -296,11 +303,18 @@ export default function GamePage() {
                         </Card>
 
                         <Card className="border-border/50 bg-card/60">
-                            <CardContent className="pt-4">
-                                <p className="text-xs text-muted-foreground text-center">
+                            <CardContent className="space-y-3 pt-4 text-center">
+                                <p className="text-xs text-muted-foreground">
                                     Desarrollado en el{' '}
                                     <span className="text-foreground">Semillero VIRAL</span>
                                 </p>
+                                <Link
+                                    to={surveyHref('voluntaria', `/games/${project.slug}`)}
+                                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                                >
+                                    <MessageSquareHeart className="h-3.5 w-3.5" />
+                                    Danos tu opinión sobre Gameploy
+                                </Link>
                             </CardContent>
                         </Card>
                     </aside>

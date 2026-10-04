@@ -38,6 +38,11 @@
   --color-sidebar-ring:               var(--sidebar-ring);
   --color-chart-bar:                  var(--chart-bar);
   --color-chart-bar-muted:            var(--chart-bar-muted);
+  --color-chart-fav-strong:           var(--chart-fav-strong);
+  --color-chart-fav:                  var(--chart-fav);
+  --color-chart-unfav:                var(--chart-unfav);
+  --color-chart-unfav-strong:         var(--chart-unfav-strong);
+  --color-chart-series-2:             var(--chart-series-2);
 }
 
 :root {
@@ -83,6 +88,17 @@
   /* Barras de los gráficos: más claras en oscuro para pasar 3:1 contra la tarjeta */
   --chart-bar:                 #a36ae6;
   --chart-bar-muted:           hsl(246, 6%, 42%);
+
+  /* Escala de acuerdo (divergente): favorable en morado, desfavorable en naranja
+     y neutral en el gris de --chart-bar-muted. Cada lado es una rampa de un solo
+     tono que se aleja de la tarjeta al ser más intensa; validados con la skill
+     dataviz contra la tarjeta oscura (#181622). */
+  --chart-fav-strong:          #a36ae6;
+  --chart-fav:                 #5f3b91;
+  --chart-unfav:               #7a3d22;
+  --chart-unfav-strong:        #d95926;
+  /* Segunda serie de un gráfico de líneas (la primera es --chart-bar) */
+  --chart-series-2:            #199e70;
 }
 
 .light {
@@ -124,6 +140,12 @@
 
   --chart-bar:                 hsl(270, 60%, 52%);
   --chart-bar-muted:           hsl(246, 7%, 70%);
+
+  --chart-fav-strong:          #853bce;
+  --chart-fav:                 #b48be6;
+  --chart-unfav:               #ee915f;
+  --chart-unfav-strong:        #c4501d;
+  --chart-series-2:            #1b9e6f;
 }
 
 @layer base {

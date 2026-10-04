@@ -131,9 +131,9 @@ Cada módulo agrupa sus `pages/`, `components/`, `services/` y `hooks/`. El alia
 | :--- | :--- | :--- |
 | `estudiante` | `/student` | Crear y gestionar sus proyectos, versiones, archivos y controles |
 | `docente` | `/teacher` | Explorar el catálogo, comentar y calificar, revisar sus evaluaciones |
-| `admin` | `/admin` | Métricas, usuarios, aprobación de cuentas, proyectos y catálogo |
+| `admin` | `/admin` | Métricas, usuarios, aprobación de cuentas, proyectos, catálogo y resultados de la encuesta (`/admin/encuestas`) |
 | `pendiente` | `/pending` | Esperar la aprobación de un administrador |
-| Sin cuenta | `/`, `/games`, `/games/:slug`, `/games/:slug/jugar` | Ver el catálogo público y jugar |
+| Sin cuenta | `/`, `/games`, `/games/:slug`, `/games/:slug/jugar`, `/encuesta` | Ver el catálogo público, jugar y responder la encuesta |
 
 Tras iniciar sesión, `useAuth` redirige según el rol devuelto por la API.
 
@@ -186,6 +186,40 @@ Tras iniciar sesión, `useAuth` redirige según el rol devuelto por la API.
 7. Cada visita guarda país, región y ciudad (la API los calcula con una base offline y no guarda la
    IP), y cuenta una vez por visitante cada 30 minutos: recargar la ficha no suma visitas. `VisitOrigins` los muestra en el panel del admin, en el del estudiante y en la pestaña
    Visitas del detalle de cada proyecto.
+
+## Encuesta de usabilidad y experiencia
+
+Para evaluar la usabilidad y la experiencia de usuario de la plataforma (`src/modules/survey/`):
+
+- **`/encuesta`** es pública: la responden estudiantes, docentes y visitantes sin cuenta. Seis pasos
+  cortos con barra de progreso: cinco datos opcionales sobre quien responde, las 10 afirmaciones de
+  la System Usability Scale (SUS), 10 afirmaciones de experiencia y un comentario. La escala va de
+  "Totalmente en desacuerdo" a "Totalmente de acuerdo", sin números a la vista, con radios nativos
+  grandes que se responden con teclado. No se avanza con afirmaciones sin responder y el borrador
+  sobrevive a una recarga. Los textos están en `preguntas.js` (`VERSION`, la misma de la API).
+- **Anónima**: la API no guarda usuario, correo ni IP. Con cuenta, se pregunta una sola vez; sin
+  cuenta, el navegador recuerda que ya respondió y ofrece "Soy otra persona" para computadores
+  compartidos.
+- **Cuándo se invita** (`invite.js`), una vez y sin interrumpir:
+  - al publicar el primer proyecto o hacer la primera evaluación (diálogo);
+  - tras una semana de uso, al entrar al panel (lo decide la API);
+  - tras 3 minutos con un juego en marcha, con una tarjeta debajo del reproductor
+    (`SurveyPlayCard`);
+  - en cualquier momento, con "Danos tu opinión" en el menú del usuario, la ficha del juego y el
+    pie de página.
+
+  "Ahora no" la pospone 3 días, como mucho dos veces. Los administradores no responden.
+- **Resultados** en `/admin/encuestas`, con filtros de periodo, perfil y momento:
+  - el SUS (media, banda, distancia al promedio de referencia de 68 e intervalo de confianza del
+    95 %) y el índice de experiencia (50 es neutral);
+  - la distribución del SUS y la tendencia mensual;
+  - cada afirmación como barra divergente de lo desfavorable a lo favorable, con las negativas
+    invertidas;
+  - quiénes respondieron y los comentarios;
+  - descarga en CSV.
+
+  Cada gráfico tiene vista de tabla. Los colores (`--chart-fav*`, `--chart-unfav*`,
+  `--chart-series-2` en `index.css`) se validaron para daltonismo y contraste en las dos tarjetas.
 
 ## Acciones destructivas
 

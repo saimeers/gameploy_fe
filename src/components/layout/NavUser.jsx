@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom'
-import { ChevronsUpDown, LogOut, User, Sun, Moon } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { ChevronsUpDown, LogOut, User, Sun, Moon, MessageSquareHeart } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -11,6 +11,7 @@ import {
 import { useTheme }     from '@/components/theme-context'
 import { useAuth }      from '@/modules/auth/hooks/useAuth'
 import { useAuthStore } from '@/store/authStore'
+import { surveyHref }   from '@/modules/survey/invite'
 
 function UserAvatar({ nombre, photoURL, className = "h-8 w-8 rounded-lg" }) {
   const initials = nombre
@@ -32,6 +33,9 @@ export function NavUser({ user }) {
   const { logout }          = useAuth()
   const { theme, setTheme } = useTheme()
   const photoURL            = useAuthStore(s => s.photoURL)
+  const { pathname }        = useLocation()
+  // Los administradores no responden la encuesta: consultan sus resultados.
+  const canGiveFeedback     = user?.rol?.nombre !== 'admin'
 
   return (
     <SidebarMenu>
@@ -74,6 +78,15 @@ export function NavUser({ user }) {
                 Mi perfil
               </Link>
             </DropdownMenuItem>
+
+            {canGiveFeedback && (
+              <DropdownMenuItem asChild>
+                <Link to={surveyHref('voluntaria', pathname)} className="flex items-center">
+                  <MessageSquareHeart className="mr-2 h-4 w-4" />
+                  Danos tu opinión
+                </Link>
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuSeparator />
 
