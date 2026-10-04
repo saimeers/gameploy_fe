@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Globe2, Loader2, MapPin } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { countryName, flagEmoji, foldTail, share } from './visitHelpers'
+import { countryName, foldTail, share } from './visitHelpers'
+import CountryFlag from './CountryFlag'
 
 const PERIODS = [
   { days: 7, label: '7 días' },
@@ -18,7 +19,7 @@ const numberFormat = new Intl.NumberFormat('es-CO')
  * Fila de una lista de barras: nombre y valor arriba, barra delgada debajo.
  * El porcentaje sobre el total aparece al pasar el cursor o enfocar la fila.
  */
-function BarRow({ label, detail, value, total, max, muted }) {
+function BarRow({ flag, label, detail, value, total, max, muted }) {
   const pct = share(value, total)
   return (
     <li
@@ -28,6 +29,7 @@ function BarRow({ label, detail, value, total, max, muted }) {
     >
       <div className="flex items-baseline justify-between gap-3 text-sm">
         <span className="min-w-0 truncate">
+          {flag && <>{flag} </>}
           {label}
           {detail && <span className="text-muted-foreground"> · {detail}</span>}
         </span>
@@ -112,7 +114,8 @@ export default function VisitOrigins({ load, title = 'Origen de las visitas', de
 
   const countryRows = foldTail(stats?.countries ?? [], MAX_COUNTRIES).map(c => ({
     key: c.other ? 'otros' : c.codigo_pais ?? 'none',
-    label: c.other ? 'Otros países' : `${c.codigo_pais ? flagEmoji(c.codigo_pais) + ' ' : ''}${countryName(c.codigo_pais)}`,
+    flag: c.other || !c.codigo_pais ? null : <CountryFlag code={c.codigo_pais} />,
+    label: c.other ? 'Otros países' : countryName(c.codigo_pais),
     value: c.visitas,
     visitas: c.visitas,
     muted: c.other || !c.codigo_pais,
@@ -120,6 +123,7 @@ export default function VisitOrigins({ load, title = 'Origen de las visitas', de
 
   const cityRows = (stats?.cities ?? []).map(c => ({
     key: `${c.codigo_pais}-${c.region}-${c.ciudad}`,
+    flag: c.codigo_pais ? <CountryFlag code={c.codigo_pais} /> : null,
     label: c.ciudad,
     detail: countryName(c.codigo_pais),
     value: c.visitas,

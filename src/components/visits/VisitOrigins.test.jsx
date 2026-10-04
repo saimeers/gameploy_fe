@@ -23,8 +23,19 @@ describe('VisitOrigins', () => {
 
     expect(await screen.findByText('Cúcuta', { selector: 'p' })).toBeInTheDocument()
     expect(screen.getByText('Más visitas: Colombia')).toBeInTheDocument()
-    expect(screen.getByLabelText('🇨🇴 Colombia: 7 visitas, 70% del total')).toBeInTheDocument()
+    expect(screen.getByLabelText('Colombia: 7 visitas, 70% del total')).toBeInTheDocument()
     expect(screen.getByLabelText('Cúcuta: 5 visitas, 50% del total')).toBeInTheDocument()
+  })
+
+  it('acompaña cada país con su bandera, que es decorativa', async () => {
+    const { container } = render(<VisitOrigins load={vi.fn().mockResolvedValue(STATS)} />)
+    await screen.findByText('Colombia')
+
+    const bandera = container.querySelector('img[src*="co.svg"]')
+    expect(bandera).toBeInTheDocument()
+    // El nombre del país ya va escrito al lado: la bandera no se anuncia.
+    expect(bandera).toHaveAttribute('aria-hidden', 'true')
+    expect(bandera).toHaveAttribute('alt', '')
   })
 
   it('explica las visitas sin ubicación', async () => {
