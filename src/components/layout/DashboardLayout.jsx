@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import SurveyInviteDialog from '@/modules/survey/components/SurveyInviteDialog'
+import { checkInvite } from '@/modules/survey/invite'
 import { AppSidebar } from './AppSidebar'
 
 const breadcrumbMap = {
@@ -12,12 +15,16 @@ const breadcrumbMap = {
     '/admin/users': 'Usuarios',
     '/admin/projects': 'Proyectos',
     '/admin/catalog': 'Catálogo',
+    '/admin/encuestas': 'Encuestas',
     '/profile': 'Mi perfil',
 }
 
 export default function DashboardLayout() {
     const { pathname } = useLocation()
     const pageTitle = breadcrumbMap[pathname] ?? 'Gameploy'
+
+    // Invitación a la encuesta (una vez por sesión del navegador; ver survey/invite.js)
+    useEffect(() => { checkInvite() }, [])
 
     return (
         <SidebarProvider>
@@ -38,6 +45,8 @@ export default function DashboardLayout() {
                 <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
                     <Outlet />
                 </div>
+
+                <SurveyInviteDialog />
 
             </SidebarInset>
         </SidebarProvider>

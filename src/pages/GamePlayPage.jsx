@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import GamePlayer from '@/components/game/GamePlayer'
 import GameUnavailable from '@/components/game/GameUnavailable'
 import { gameUrl } from '@/components/files/fileFormat'
 import { usePublicGame } from '@/hooks/use-public-game'
+import SurveyPlayCard from '@/modules/survey/components/SurveyPlayCard'
 
 const playPath = (slug) => `/games/${slug}/jugar`
 
@@ -15,6 +17,7 @@ const playPath = (slug) => `/games/${slug}/jugar`
 export default function GamePlayPage() {
   const { slug } = useParams()
   const { project, loading, error } = usePublicGame(slug, playPath)
+  const [running, setRunning] = useState(false)
 
   if (loading) return (
     <div className="flex min-h-svh items-center justify-center bg-background">
@@ -48,7 +51,11 @@ export default function GamePlayPage() {
             version={version?.numero_version}
             coverUrl={portada?.url}
             autoStart
+            onRunningChange={setRunning}
           />
+          <div className="mt-4">
+            <SurveyPlayCard running={running} />
+          </div>
         </div>
       </main>
     </div>

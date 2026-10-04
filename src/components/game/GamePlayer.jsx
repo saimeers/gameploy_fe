@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle, ExternalLink, Gamepad2, Loader2, Maximize, Minimize, Play, RotateCcw,
 } from 'lucide-react'
@@ -134,8 +134,10 @@ function Cover({ title, version, coverUrl, onPlay }) {
  * @param {string} [newTabHref] página del frontend que abre "Nueva pestaña";
  *   sin ella no se ofrece. Nunca es `src`: ese enlace caduca y no debe circular.
  * @param {boolean} [autoStart] cargar el juego sin esperar a que se pulse jugar
+ * @param {(running: boolean) => void} [onRunningChange] avisa cuando el juego
+ *   termina de cargar y está en marcha, y cuando deja de estarlo
  */
-export default function GamePlayer({ src, title, version, coverUrl, newTabHref, autoStart = false }) {
+export default function GamePlayer({ src, title, version, coverUrl, newTabHref, autoStart = false, onRunningChange }) {
   const frameRef = useRef(null)
   const iframeRef = useRef(null)
   const [started, setStarted] = useState(autoStart)
@@ -143,6 +145,9 @@ export default function GamePlayer({ src, title, version, coverUrl, newTabHref, 
   const [session, setSession] = useState(0)
   const { isFullscreen, isFallback, enter, exit } = useFullscreen(frameRef)
   const loading = useGameLoading(iframeRef, started, session)
+  const running = started && loading.phase === 'ready'
+
+  useEffect(() => { onRunningChange?.(running) }, [running, onRunningChange])
 
   if (!src) return (
     <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-dashed border-border/60 bg-card/40">

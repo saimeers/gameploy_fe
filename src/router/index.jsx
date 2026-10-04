@@ -10,6 +10,7 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import ErrorPage from '@/components/ErrorPage'
 import GamePage from '@/pages/GamePage'
 import GamePlayPage from '@/pages/GamePlayPage'
+import SurveyPage from '@/modules/survey/pages/SurveyPage'
 import GamesListPage from '@/pages/GamesListPage'
 
 // Student
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
   { path: '/pending', element: <PendingPage /> },
   { path: '/games/:slug', element: <GamePage /> },
   { path: '/games/:slug/jugar', element: <GamePlayPage /> },
+  { path: '/encuesta', element: <SurveyPage /> },
   { path: '/games', element: <GamesListPage /> },
 
   // Perfil — común a los tres roles
