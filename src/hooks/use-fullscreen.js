@@ -62,6 +62,8 @@ export function useFullscreen(ref) {
       const exitFullscreen = document.exitFullscreen ?? document.webkitExitFullscreen
       exitFullscreen?.call(document)?.catch?.(() => {})
     }
+    // El bloqueo se libera solo al salir, pero no en todos los navegadores.
+    screen.orientation?.unlock?.()
   }, [isFallback])
 
   const isFullscreen = isNative || isFallback
