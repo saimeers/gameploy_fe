@@ -204,4 +204,77 @@ describe('GamePlayer', () => {
       }
     })
   })
+
+  describe('teléfono en vertical', () => {
+    /** Hace que solo la consulta del teléfono en vertical coincida. */
+    const portrait = (matches) => {
+      window.matchMedia.mockImplementation(query => ({
+        matches: matches && query.includes('orientation: portrait'),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    }
+
+    afterEach(() => { portrait(false) })
+
+    it('anuncia en la portada que hay que girar el teléfono', () => {
+      portrait(true)
+      renderPlayer()
+
+      expect(screen.getByText('Gira el teléfono para jugar')).toBeInTheDocument()
+      expect(screen.queryByText('Mejor en pantalla completa')).not.toBeInTheDocument()
+    })
+
+    it('tapa el juego con el aviso de girar en cuanto arranca', async () => {
+      const user = userEvent.setup()
+      portrait(true)
+      renderPlayer()
+
+      await user.click(screen.getByRole('button', { name: 'Jugar Memoria Cognitiva' }))
+
+      expect(screen.getByRole('alertdialog', { name: 'Gira el dispositivo para jugar' })).toBeInTheDocument()
+      // El juego sí carga por detrás: al girar ya está listo para jugarse.
+      expect(screen.getByTitle('Memoria Cognitiva')).toBeInTheDocument()
+    })
+
+    it('intenta girar la pantalla al pulsar jugar, usando ese gesto', async () => {
+      const user = userEvent.setup()
+      const lock = vi.fn().mockResolvedValue(undefined)
+      // `screen` aquí es el de Testing Library: el del navegador es window.screen.
+      Object.defineProperty(window.screen, 'orientation', { value: { lock }, configurable: true })
+      portrait(true)
+      renderPlayer()
+      const frame = screen.getByTestId('game-frame')
+      frame.requestFullscreen = vi.fn(async () => {
+        document.fullscreenElement = frame
+        document.dispatchEvent(new Event('fullscreenchange'))
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Jugar Memoria Cognitiva' }))
+
+      expect(frame.requestFullscreen).toHaveBeenCalled()
+      expect(lock).toHaveBeenCalledWith('landscape')
+    })
+
+    it('deja pasar a quien tiene el giro bloqueado en el sistema', async () => {
+      const user = userEvent.setup()
+      portrait(true)
+      renderPlayer({ autoStart: true })
+
+      await user.click(screen.getByRole('button', { name: 'Jugar en vertical de todas formas' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+
+    it('no estorba en el computador ni con la ventana estrecha', async () => {
+      const user = userEvent.setup()
+      renderPlayer()
+
+      await user.click(screen.getByRole('button', { name: 'Jugar Memoria Cognitiva' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+  })
 })

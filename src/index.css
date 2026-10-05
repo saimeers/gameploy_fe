@@ -164,3 +164,16 @@
   from { transform: translateX(-100%); }
   to   { transform: translateX(300%); }
 }
+
+/* Teléfono que se inclina en el aviso de girar el dispositivo */
+@keyframes gameploy-rotate {
+  0%, 40%   { transform: rotate(0deg); }
+  70%, 100% { transform: rotate(-90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[gameploy-rotate_2\.4s_ease-in-out_infinite\] {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  AlertTriangle, ExternalLink, Gamepad2, Loader2, Maximize, Minimize, Play, RotateCcw,
+  AlertTriangle, ExternalLink, Gamepad2, Loader2, Maximize, Minimize, Play, RotateCcw, RotateCw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useFullscreen } from '@/hooks/use-fullscreen'
+import { useIsPortraitPhone } from '@/hooks/use-orientation'
 import { cn } from '@/lib/utils'
+import RotateDevice from './RotateDevice'
 import { useGameLoading } from './useGameLoading'
 
 /** Segundos de carga a partir de los cuales se explica por qué tarda. */
@@ -79,7 +81,7 @@ function LoadingOverlay({ title, phase, downloadPercent, elapsed, error, onRetry
 }
 
 /** Portada del reproductor antes de cargar el juego. */
-function Cover({ title, version, coverUrl, onPlay }) {
+function Cover({ title, version, coverUrl, onPlay, portrait }) {
   return (
     <div className="absolute inset-0">
       {coverUrl ? (
@@ -115,9 +117,15 @@ function Cover({ title, version, coverUrl, onPlay }) {
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between px-4 py-3 text-[11px] text-white/60">
         {version ? <span className="font-mono">v{version}</span> : <span />}
-        <span className="hidden items-center gap-1.5 sm:flex">
-          <Maximize className="h-3 w-3" /> Mejor en pantalla completa
-        </span>
+        {portrait ? (
+          <span className="flex items-center gap-1.5">
+            <RotateCw className="h-3 w-3" /> Gira el teléfono para jugar
+          </span>
+        ) : (
+          <span className="hidden items-center gap-1.5 sm:flex">
+            <Maximize className="h-3 w-3" /> Mejor en pantalla completa
+          </span>
+        )}
       </div>
     </div>
   )
@@ -143,9 +151,13 @@ export default function GamePlayer({ src, title, version, coverUrl, newTabHref, 
   const [started, setStarted] = useState(autoStart)
   // Cambiarla monta un iframe nuevo, que vuelve a cargar el juego desde cero.
   const [session, setSession] = useState(0)
+  // Quien tiene el giro bloqueado en el sistema no puede rotar: se le deja pasar.
+  const [ignoreRotation, setIgnoreRotation] = useState(false)
   const { isFullscreen, isFallback, enter, exit } = useFullscreen(frameRef)
+  const portrait = useIsPortraitPhone()
   const loading = useGameLoading(iframeRef, started, session)
   const running = started && loading.phase === 'ready'
+  const mustRotate = started && portrait && !ignoreRotation
 
   useEffect(() => { onRunningChange?.(running) }, [running, onRunningChange])
 
@@ -168,6 +180,14 @@ export default function GamePlayer({ src, title, version, coverUrl, newTabHref, 
       setStarted(true)
       await enter()
     }
+    focusGame()
+  }
+
+  // En el teléfono, el toque de jugar es el único gesto que permite a Android
+  // girar la pantalla, así que se aprovecha para entrar en pantalla completa.
+  const play = async () => {
+    setStarted(true)
+    if (portrait) await enter()
     focusGame()
   }
 
@@ -262,10 +282,17 @@ export default function GamePlayer({ src, title, version, coverUrl, newTabHref, 
             )}
           </>
         ) : (
-          <Cover title={title} version={version} coverUrl={coverUrl} onPlay={() => setStarted(true)} />
+          <Cover title={title} version={version} coverUrl={coverUrl} portrait={portrait} onPlay={play} />
         )}
 
-        {isFullscreen && (
+        {mustRotate && (
+          <RotateDevice
+            onFullscreen={isFullscreen ? undefined : toggleFullscreen}
+            onIgnore={() => setIgnoreRotation(true)}
+          />
+        )}
+
+        {isFullscreen && !mustRotate && (
           <button
             type="button"
             onClick={toggleFullscreen}
