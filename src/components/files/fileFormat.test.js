@@ -14,10 +14,10 @@ describe('gameUrl', () => {
     expect(gameUrl('p1', version)).toBe('https://cdn/t/1.x/builds/b1/index.html')
   })
 
-  it('para builds anteriores al CDN, usa /play de la versión', () => {
+  it('sin enlace firmado no hay dónde jugar: la ruta heredada se retiró', () => {
     const version = { id: 'v1', archivos: [{ tipo: 'juego_webgl' }] }
 
-    expect(gameUrl('p1', version)).toMatch(/\/play\/p1\/v1\/index\.html$/)
+    expect(gameUrl('p1', version)).toBeNull()
   })
 
   it('devuelve null si la versión no tiene build', () => {
